@@ -153,14 +153,22 @@ public class RayTracingMaster : MonoBehaviour
         int groupX = Mathf.CeilToInt((float)Screen.width / x);
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
 
-        for (int i = 0; i < debugSampleCount; ++i)
-        {
-            cs.SetBool("isCosineSample", isCosineSample);
-            //cs.SetFloat("_Seed", debugSeeds[debugFrameIndex % debugSampleCount]);
-            cs.SetFloat("_Seed", Random.value);
-            cs.Dispatch(kernelHandle, groupX, groupY, 1);
-            debugFrameIndex += 1;
-        }
+        //// 1st step, no add shader
+        //for (int i = 0; i < debugSampleCount; ++i)
+        //{
+        //    cs.SetBool("isCosineSample", isCosineSample);
+        //    // Make noise stable
+        //    cs.SetFloat("_Seed", debugSeeds[debugFrameIndex % debugSampleCount]);
+        //    //cs.SetFloat("_Seed", Random.value);
+        //    cs.Dispatch(kernelHandle, groupX, groupY, 1);
+        //    debugFrameIndex += 1;
+        //}
+
+        // 2nd step, utilze add shader
+        cs.SetBool("isCosineSample", isCosineSample);
+        // Make noise stable
+        cs.SetFloat("_Seed", Random.value);
+        cs.Dispatch(kernelHandle, groupX, groupY, 1);
 
         if (!aliasing)
             Graphics.Blit(rt, destination);
