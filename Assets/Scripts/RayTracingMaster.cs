@@ -148,9 +148,7 @@ public class RayTracingMaster : MonoBehaviour
         //InitSpheres();
         UpdateParameters();
 
-        //cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
-        uint x = 32;
-        uint y = 32;
+        cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
         int groupX = Mathf.CeilToInt((float)Screen.width / x);
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
 
