@@ -11,6 +11,7 @@ public class SampleHemisphere : MonoBehaviour
 
     ComputeBuffer cb;
     Vector3[] directions;
+    float[] seeds;
 
 
     // http://corysimon.github.io/articles/uniformdistn-on-sphere/
@@ -22,8 +23,11 @@ public class SampleHemisphere : MonoBehaviour
         cs.SetBuffer(0, "directions", cb);
         cs.SetBool("isCosineSample", isCosineSample);
         cs.SetFloat("_Seed", Random.value);
-
-        cb.GetData(directions);
+        //seeds = new float[count];
+        //for (int i = 0; i < directions.Length; ++i)
+        //{
+        //    seeds[i] = Random.value;
+        //}
     }
 
     private void Update()
@@ -33,8 +37,8 @@ public class SampleHemisphere : MonoBehaviour
         int groupX = Mathf.CeilToInt((float)count / x);
 
         cs.SetBool("isCosineSample", isCosineSample);
-        cs.SetFloat("_Seed", Random.value);
         cs.Dispatch(0, groupX, 1, 1);
+        cb.GetData(directions);
     }
 
 
@@ -45,7 +49,10 @@ public class SampleHemisphere : MonoBehaviour
         {
             for (int i = 0; i < directions.Length; ++i)
             {
-                Gizmos.DrawLine(Vector3.zero, directions[i] * radius);
+                Gizmos.color = Color.gray;
+                //Gizmos.DrawLine(Vector3.zero, directions[i] * radius);
+                Gizmos.color = Color.red;
+                Gizmos.DrawSphere(directions[i] * radius, 0.05f);
             }
         }
     }
