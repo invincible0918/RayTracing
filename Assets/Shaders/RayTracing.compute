@@ -609,8 +609,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     uint width = DestinationWidth;
     uint height = DestinationHeight;
 #else
-    //uint width, height;
-    //Destination.GetDimensions(width, height);
+    uint width, height;
+    Destination.GetDimensions(width, height);
 #endif
 
     // transform pixel from (0, 1) to (-1, 1)
