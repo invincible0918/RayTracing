@@ -44,6 +44,13 @@ float _Seed;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
+#ifdef SHADER_API_METAL
+int _PlaneBufferSize;
+int _SphereBufferSize;
+int DestinationWidth;
+int DestinationHeight;
+#endif
+
 // range: 0~1
 float rand()
 {
@@ -199,8 +206,13 @@ RayHit Trace(Ray ray)
     //IntersectSphere(ray, sphere2, hit);
 
     // Trace Plane
+#ifdef SHADER_API_METAL
+    uint count0 = _PlaneBufferSize;
+#else
     uint count0, stride0;
     _PlaneBuffer.GetDimensions(count0, stride0);
+#endif
+
     for (uint i = 0; i < count0; ++i)
     {
         Plane plane = _PlaneBuffer[i];
@@ -208,8 +220,13 @@ RayHit Trace(Ray ray)
     }
 
     // Trace Sphere
+#ifdef SHADER_API_METAL
+    uint count1 = _SphereBufferSize;
+#else
     uint count1, stride1;
     _SphereBuffer.GetDimensions(count1, stride1);
+#endif
+
     for (uint j = 0; j < count1; ++j)
     {
         Sphere sphere = _SphereBuffer[j];
@@ -588,9 +605,14 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     //_Pixel = id.x + id.y * 3.43121412313;
 
     // TODO: insert actual code here!
-    uint width, height;
-    Destination.GetDimensions(width, height);
-    
+#ifdef SHADER_API_METAL
+    uint width = DestinationWidth;
+    uint height = DestinationHeight;
+#else
+    //uint width, height;
+    //Destination.GetDimensions(width, height);
+#endif
+
     // transform pixel from (0, 1) to (-1, 1)
     //float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
 

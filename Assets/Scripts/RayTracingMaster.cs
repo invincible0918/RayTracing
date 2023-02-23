@@ -148,8 +148,9 @@ public class RayTracingMaster : MonoBehaviour
         //InitSpheres();
         UpdateParameters();
 
-        cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
-
+        //cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
+        uint x = 32;
+        uint y = 32;
         int groupX = Mathf.CeilToInt((float)Screen.width / x);
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
 
@@ -203,11 +204,17 @@ public class RayTracingMaster : MonoBehaviour
             cs.SetVector("_DirectionalLightColor", light.color);
         }
 
-        // Pass sphere datas
+        // Pass sphere and planes datas
         sphereCB.SetData(spheres);
         planeCB.SetData(planes);
         cs.SetBuffer(kernelHandle, "_SphereBuffer", sphereCB);
         cs.SetBuffer(kernelHandle, "_PlaneBuffer", planeCB);
+#if UNITY_EDITOR_OSX
+        cs.SetInt("_PlaneBufferSize", planes.Length);
+        cs.SetInt("_SphereBufferSize", spheres.Length);
+        cs.SetInt("DestinationWidth", Screen.width);
+        cs.SetInt("DestinationHeight", Screen.height);
+#endif
     }
 
     void InitSpheres()
