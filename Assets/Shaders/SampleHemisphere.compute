@@ -72,7 +72,7 @@ float3 UniformSampleHemisphere(float3 normal)
     float r = sqrt(1 - u.x * u.x);
     float phi = 2.0 * PI * u.y;
 
-    float3  B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
+    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
     float3  T = cross(B, normal);
 
     return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
@@ -86,7 +86,7 @@ float3 CosineSampleHemisphere(float3 normal)
     float r = sqrt(u.x);
     float theta = 2.0 * PI * u.y;
 
-    float3  B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
+    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
     float3  T = cross(B, normal);
 
     return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);

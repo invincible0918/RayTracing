@@ -15,6 +15,8 @@ public class RayTracingMaster : MonoBehaviour
 
     public Transform sphereParent;
     public Transform planeParent;
+    // chapter 3.1
+    public Transform meshParent;
 
     public bool aliasing;
 
@@ -55,13 +57,35 @@ public class RayTracingMaster : MonoBehaviour
     Plane[] planes;
     ComputeBuffer planeCB;
 
+    // chapter 3.1
+    struct CMesh
+    {
+        public Matrix4x4 localToWorldMatrix;
+        public int indicesOffset;
+        public int indicesCount;
+        public Vector3 albedo;
+        public float metallic;
+        public float smoothness;
+    }
+
+    CMesh[] cmeshes;
+    List<Vector3> vertices = new List<Vector3>();
+    List<int> indices = new List<int>();
+
+    ComputeBuffer meshCB;
+    ComputeBuffer vertexCB;
+    ComputeBuffer indexCB;
+
     // Start is called before the first frame update
     void Start()
     {
-        InitShader();
         InitCamera();
         InitPlanes();
         InitSpheres();
+        // chapter 3.1
+        InitMeshes();
+
+        InitShader();
     }
 
     private void OnDisable()
@@ -103,6 +127,22 @@ public class RayTracingMaster : MonoBehaviour
         debugSeeds = new float[debugSampleCount];
         for (int i = 0; i < debugSampleCount; ++i)
             debugSeeds[i] = Random.value;
+
+        cs.SetBuffer(kernelHandle, "_SphereBuffer", sphereCB);
+        cs.SetBuffer(kernelHandle, "_PlaneBuffer", planeCB);
+        // chapter 3.1
+        cs.SetBuffer(kernelHandle, "_MeshBuffer", meshCB);
+        cs.SetBuffer(kernelHandle, "_VertexBuffer", vertexCB);
+        cs.SetBuffer(kernelHandle, "_IndexBuffer", indexCB);
+#if UNITY_EDITOR_OSX
+        cs.SetInt("_PlaneBufferSize", planes.Length);
+        cs.SetInt("_SphereBufferSize", spheres.Length);
+        // chapter 3.1
+        cs.SetInt("_MeshBufferSize", cmeshes.Length);
+
+        cs.SetInt("DestinationWidth", Screen.width);
+        cs.SetInt("DestinationHeight", Screen.height);
+#endif
     }
 
     void InitCamera()
@@ -152,20 +192,18 @@ public class RayTracingMaster : MonoBehaviour
         int groupX = Mathf.CeilToInt((float)Screen.width / x);
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
 
-        //// 1st step, no add shader
+        // 1st step, no add shader
         //for (int i = 0; i < debugSampleCount; ++i)
         //{
         //    cs.SetBool("isCosineSample", isCosineSample);
         //    // Make noise stable
         //    cs.SetFloat("_Seed", debugSeeds[debugFrameIndex % debugSampleCount]);
-        //    //cs.SetFloat("_Seed", Random.value);
         //    cs.Dispatch(kernelHandle, groupX, groupY, 1);
         //    debugFrameIndex += 1;
         //}
 
         // 2nd step, utilze add shader
         cs.SetBool("isCosineSample", isCosineSample);
-        // Make noise stable
         cs.SetFloat("_Seed", Random.value);
         cs.Dispatch(kernelHandle, groupX, groupY, 1);
 
@@ -191,9 +229,6 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetMatrix("_Camera2World", cam.cameraToWorldMatrix);
         cs.SetMatrix("_CameraInverseProjection", cam.projectionMatrix.inverse);
         cs.SetVector("_PixelOffset", new Vector4(Random.value, Random.value, 0, 0));
-        //cs.SetFloat("_Seed", Random.value);
-        //cs.SetFloat("_rnd0", Random.value);
-        //cs.SetFloat("_rnd1", Random.value);
 
         if (light)
         {
@@ -201,35 +236,23 @@ public class RayTracingMaster : MonoBehaviour
             cs.SetVector("_DirectionalLight", new Vector4(dir.x, dir.y, dir.z, light.intensity * lightIntensityScale));
             cs.SetVector("_DirectionalLightColor", light.color);
         }
-
-        // Pass sphere and planes datas
-        sphereCB.SetData(spheres);
-        planeCB.SetData(planes);
-        cs.SetBuffer(kernelHandle, "_SphereBuffer", sphereCB);
-        cs.SetBuffer(kernelHandle, "_PlaneBuffer", planeCB);
-#if UNITY_EDITOR_OSX
-        cs.SetInt("_PlaneBufferSize", planes.Length);
-        cs.SetInt("_SphereBufferSize", spheres.Length);
-        cs.SetInt("DestinationWidth", Screen.width);
-        cs.SetInt("DestinationHeight", Screen.height);
-#endif
     }
 
     void InitSpheres()
     {
         if (sphereParent != null)
         {
-            Dictionary<float, Renderer> di = new Dictionary<float, Renderer>();
+            Dictionary<Renderer, float> di = new Dictionary<Renderer, float>();
             // Sort by distance first
             foreach(Renderer r in sphereParent.GetComponentsInChildren<Renderer>())
             {
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
-                di.Add(distance, r);
+                di.Add(r, distance);
             }
-            di = di.OrderByDescending(o => o.Key).ToDictionary(o => o.Key, p => p.Value);
+            di = di.OrderByDescending(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
 
-            spheres = new Sphere[di.Values.Count];
-            Renderer[] rs = di.Values.ToArray();
+            spheres = new Sphere[di.Keys.Count];
+            Renderer[] rs = di.Keys.ToArray();
 
             for (int i = 0; i < rs.Length; ++i)
             {
@@ -253,17 +276,17 @@ public class RayTracingMaster : MonoBehaviour
     {
         if (planeParent != null)
         {
-            Dictionary<float, Renderer> di = new Dictionary<float, Renderer>();
+            Dictionary<Renderer, float> di = new Dictionary<Renderer, float>();
             // Sort by distance first
             foreach (Renderer r in planeParent.GetComponentsInChildren<Renderer>())
             {
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
-                di.Add(distance, r);
+                di.Add(r, distance);
             }
-            di = di.OrderByDescending(o => o.Key).ToDictionary(o => o.Key, p => p.Value);
+            di = di.OrderByDescending(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
 
-            planes = new Plane[di.Values.Count];
-            Renderer[] rs = di.Values.ToArray();
+            planes = new Plane[di.Keys.Count];
+            Renderer[] rs = di.Keys.ToArray();
 
             for (int i = 0; i < rs.Length; ++i)
             {
@@ -286,9 +309,73 @@ public class RayTracingMaster : MonoBehaviour
             planeCB.SetData(planes);
         }
     }
+
+    // chapter 3.1
+    void InitMeshes()
+    {
+        if (meshParent != null)
+        {
+            Dictionary<MeshRenderer, float> di = new Dictionary<MeshRenderer, float>();
+            // Sort by distance first
+            foreach (MeshRenderer r in meshParent.GetComponentsInChildren<MeshRenderer>())
+            {
+                float distance = Vector3.Distance(r.transform.position, cam.transform.position);
+                di.Add(r, distance);
+            }
+            di = di.OrderByDescending(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
+
+            cmeshes = new CMesh[di.Keys.Count];
+            indices.Clear();
+            vertices.Clear();
+
+            MeshRenderer[] rs = di.Keys.ToArray();
+
+            for (int i = 0; i < rs.Length; ++i)
+            {
+                Mesh mesh = rs[i].GetComponent<MeshFilter>().sharedMesh;
+
+                // Add vertex data
+                int firstVertex = vertices.Count;
+                vertices.AddRange(mesh.vertices);
+
+                // Add index data - if the vertex buffer wasn't empty before, the
+                // indices need to be offset
+                int firstIndex = indices.Count;
+                int[] currentMeshIndices = mesh.GetIndices(0);
+                indices.AddRange(currentMeshIndices.Select(index => index + firstVertex));
+
+                CMesh cmesh = new CMesh();
+                cmesh.localToWorldMatrix = rs[i].transform.localToWorldMatrix;
+                cmesh.indicesOffset = firstIndex;
+                cmesh.indicesCount = currentMeshIndices.Length;
+
+                Material mat = rs[i].sharedMaterial;
+                cmesh.albedo = new Vector3(mat.color.r, mat.color.g, mat.color.b);
+                cmesh.metallic = Mathf.Max(0.01f, mat.GetFloat("_Metallic"));
+                cmesh.smoothness = Mathf.Max(0.01f, mat.GetFloat("_Glossiness"));
+                cmeshes[i] = cmesh;
+            }
+
+            if (meshCB == null)
+                meshCB = new ComputeBuffer(cmeshes.Length, sizeof(float) * 21 + sizeof(int) * 2);
+            meshCB.SetData(cmeshes);
+
+            if (vertexCB == null)
+                vertexCB = new ComputeBuffer(vertices.Count, sizeof(float) * 3);
+            vertexCB.SetData(vertices);
+
+            if (indexCB == null)
+                indexCB = new ComputeBuffer(indices.Count, sizeof(int));
+            indexCB.SetData(indices);
+        }
+    }
+
     private void OnDestroy()
     {
         sphereCB?.Release();
         planeCB?.Release();
+
+        // chapter 3.1
+        meshCB?.Release();
     }
 }

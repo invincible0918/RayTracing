@@ -39,6 +39,20 @@ struct Plane
 };
 StructuredBuffer<Plane> _PlaneBuffer;
 
+// chapter 3.1
+struct CMesh
+{
+    float4x4 localToWorldMatrix;
+    int indicesOffset;
+    int indicesCount;
+    float3 albedo;
+    float metallic;
+    float smoothness;
+};
+StructuredBuffer<CMesh> _MeshBuffer;
+StructuredBuffer<float3> _VertexBuffer;
+StructuredBuffer<int> _IndexBuffer;
+
 float2 _Pixel;
 float _Seed;
 static const float PI = 3.14159265f;
@@ -47,6 +61,9 @@ static const float EPSILON = 1e-8;
 #ifdef SHADER_API_METAL
 int _PlaneBufferSize;
 int _SphereBufferSize;
+// chapter 3.1
+int _MeshBufferSize;
+
 int DestinationWidth;
 int DestinationHeight;
 #endif
@@ -191,6 +208,73 @@ void IntersectSphere(Ray ray, Sphere sphere, inout RayHit hit)
     hit.smoothness = sphere.smoothness;
 }
 
+// chapter 3.1
+bool IntersectTriangle_MT97(Ray ray, float3 vert0, float3 vert1, float3 vert2,
+    inout float t, inout float u, inout float v)
+{
+    // find vectors for two edges sharing vert0
+    float3 edge1 = vert1 - vert0;
+    float3 edge2 = vert2 - vert0;
+
+    // begin calculating determinant - also used to calculate U parameter
+    float3 pvec = cross(ray.direction, edge2);
+
+    // if determinant is near zero, ray lies in plane of triangle
+    float det = dot(edge1, pvec);
+
+    // use backface culling
+    if (det < EPSILON)
+        return false;
+    float inv_det = 1.0f / det;
+
+    // calculate distance from vert0 to ray origin
+    float3 tvec = ray.origin - vert0;
+
+    // calculate U parameter and test bounds
+    u = dot(tvec, pvec) * inv_det;
+    if (u < 0.0 || u > 1.0f)
+        return false;
+
+    // prepare to test V parameter
+    float3 qvec = cross(tvec, edge1);
+
+    // calculate V parameter and test bounds
+    v = dot(ray.direction, qvec) * inv_det;
+    if (v < 0.0 || u + v > 1.0f)
+        return false;
+
+    // calculate t, ray intersects triangle
+    t = dot(edge2, qvec) * inv_det;
+
+    return true;
+}
+
+void IntersectMesh(Ray ray, CMesh mesh, inout RayHit hit)
+{
+    uint offset = mesh.indicesOffset;
+    uint count = offset + mesh.indicesCount;
+    for (uint i = offset; i < count; i += 3)
+    {
+        float3 v0 = (mul(mesh.localToWorldMatrix, float4(_VertexBuffer[_IndexBuffer[i]], 1))).xyz;
+        float3 v1 = (mul(mesh.localToWorldMatrix, float4(_VertexBuffer[_IndexBuffer[i + 1]], 1))).xyz;
+        float3 v2 = (mul(mesh.localToWorldMatrix, float4(_VertexBuffer[_IndexBuffer[i + 2]], 1))).xyz;
+
+        float t, u, v;
+        if (IntersectTriangle_MT97(ray, v0, v1, v2, t, u, v))
+        {
+            if (t > 0 && t < hit.distance)
+            {
+                hit.distance = t;
+                hit.position = ray.origin + t * ray.direction;
+                hit.normal = normalize(cross(v1 - v0, v2 - v0));
+                hit.albedo = mesh.albedo;
+                hit.metallic = mesh.metallic;
+                hit.smoothness = mesh.smoothness;
+            }
+        }
+    }
+}
+
 RayHit Trace(Ray ray)   
 {
     RayHit hit = CreateRayHit();
@@ -227,10 +311,25 @@ RayHit Trace(Ray ray)
     _SphereBuffer.GetDimensions(count1, stride1);
 #endif
 
-    for (uint j = 0; j < count1; ++j)
+    for (uint i = 0; i < count1; ++i)
     {
-        Sphere sphere = _SphereBuffer[j];
+        Sphere sphere = _SphereBuffer[i];
         IntersectSphere(ray, sphere, hit);
+    }
+
+    // chapter 3.1
+    // Trace mesh
+#ifdef SHADER_API_METAL
+    uint count2 = _MeshBufferSize;
+#else
+    uint count2, stride2;
+    _MeshBuffer.GetDimensions(count2, stride2);
+#endif
+
+    for (uint i = 0; i < count2; ++i)
+    {
+        CMesh cmesh = _MeshBuffer[i];
+        IntersectMesh(ray, cmesh, hit);
     }
 
     return hit;
@@ -252,95 +351,47 @@ float3x3 GetTangentSpace(float3 normal)
 // https://zhuanlan.zhihu.com/p/437461225
 float3 SampleHemisphere(float3 normal)
 {
-    //// Uniformly sample hemisphere direction
+    ////// Uniformly sample hemisphere direction
     //float theta = 2 * PI * rand();
     //float phi = 0.5 * PI * rand(); // semi-sphere
 
-    float theta = 2 * PI * rand();
-    float phi = 0.5 * PI * rand(); // semi-sphere
-
-    //theta = 2 * PI * rand();
-    //phi = acos(sqrt(1 - rand()));
-
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(normal));
-
-    //// Uniformly sample hemisphere direction
-    //float cosTheta = rand();
-    //float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-    //float phi = 2 * PI * rand();
-    //float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    //float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
     //// Transform direction to world space
-    //return mul(tangentSpaceDir, GetTangentSpace(normal));
+    //return mul(localSpaceDir, GetTangentSpace(normal));
+
+    // Uniformly sample hemisphere direction
+    float cosTheta = rand();
+    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+    float phi = 2 * PI * rand();
+    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    // Transform direction to world space
+    return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
 float3 UniformSampleHemisphere(float3 normal)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
+    float2 u = float2(rand(), rand());
 
-    float r = sqrt(u.x);
+    float r = sqrt(1 - u.x * u.x);
     float phi = 2.0 * PI * u.y;
 
-    float3  B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
+    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
     float3  T = cross(B, normal);
 
     return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
-
-
-    //float phi = sqrt(1.0 - u.x * u.x);
-
-    //float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    //// Transform direction to world space
-    //return mul(localSpaceDir, GetTangentSpace(normal));
-
-    //float3  B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
-    //float3  T = cross(B, normal);
-
-    //return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
-
-
-    ////// Uniformly sample hemisphere direction
-    ////float theta = 2 * PI * rand();
-    ////float phi = 0.5 * PI * rand(); // semi-sphere
-
-    //float theta = 2 * PI * rand();
-    //float phi = 0.5 * PI * rand(); // semi-sphere
-
-    ////theta = 2 * PI * rand();
-    ////phi = acos(sqrt(1 - rand()));
-
-    //float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    //// Transform direction to world space
-    //return mul(localSpaceDir, GetTangentSpace(normal));
-
-    ////// Uniformly sample hemisphere direction
-    ////float cosTheta = rand();
-    ////float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-    ////float phi = 2 * PI * rand();
-    ////float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    ////// Transform direction to world space
-    ////return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
 float3 CosineSampleHemisphere(float3 normal)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
+    float2 u = float2(rand(), rand());
 
     float r = sqrt(u.x);
     float theta = 2.0 * PI * u.y;
 
-    float3  B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
+    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
     float3  T = cross(B, normal);
 
     return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
-
-    //float3 B = normalize(cross(normal, float3(0.0, 1.0, 1.0)));
-    //float3 T = cross(B, normal);
-
-    //return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
 }
 
 // The energy function is a little helper that averages the color channels:
@@ -358,25 +409,6 @@ float smoothness2PhongAlpha(float s)
 bool isCosineSample;
 float3 Shade(inout Ray ray, RayHit hit)
 {
-    if (hit.distance < 1.#INF)
-    {
-        ray.origin = hit.position + hit.normal * 0.01f;
-
-        if (isCosineSample)
-            ray.direction = CosineSampleHemisphere(hit.normal); 
-        else
-            ray.direction = UniformSampleHemisphere(hit.normal);
-        //ray.direction = reflect(ray.direction, hit.normal);
-
-        return 0;
-    }
-    else
-    {
-        ray.energy = 0.0f;
-        return 0.75;
-        return SkyboxCube.SampleLevel(_LinearClamp, ray.direction, 0).xyz;
-    }
-
     if (hit.distance < 1.#INF)
     {   
         //// Whitted ray trace start
@@ -435,14 +467,14 @@ float3 Shade(inout Ray ray, RayHit hit)
         // 则推导公式为：
         // L(x,ωo)=1/N * ∑[2π*(kd/π + ks(α+2)/2π*pow((ωr⋅ωo), α)]*(ωi⋅n)L(x, ωi)
         // L(x,ωo)=1/N * ∑[2*kd + ks(α+2)*pow((ωr⋅ωo), α)]*(ωi⋅n)L(x, ωi)
-        float3 specularColor = lerp(hit.albedo, hit.albedo * 0.1f, hit.metallic);
-        float3 reflected = reflect(ray.direction, hit.normal);
-        float alpha = smoothness2PhongAlpha(hit.smoothness);
-        float3 diffuse = 2 * min(1.0f - specularColor, hit.albedo);
-        ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal));
+        //float3 specularColor = lerp(hit.albedo, hit.albedo * 0.1f, hit.metallic);
+        //float3 reflected = reflect(ray.direction, hit.normal);
+        //float alpha = smoothness2PhongAlpha(hit.smoothness);
+        //float3 diffuse = 2 * min(1.0f - specularColor, hit.albedo);
+        //ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal));
 
-        float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflected, ray.direction)), alpha);
-        ray.energy *= (diffuse + specular) * saturate(dot(hit.normal, ray.direction));
+        //float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflected, ray.direction)), alpha);
+        //ray.energy *= (diffuse + specular) * saturate(dot(hit.normal, ray.direction));
 
         // step 7. 此时可以关闭 aliasing，现在我们的渲染仍然存在一个问题：噪声太多，尤其是黑色噪点，这是因为我们使用的是 uniform sampling 的Monte Carlo积分
         // 理论上在Monte Carlo积分中，∑fr(x)/pdf(x) 中的 f(x) 和 pdf(x) 应该尽可能的相似应该尽可能的相似, 即FN≈1/N ∑1
@@ -452,31 +484,20 @@ float3 Shade(inout Ray ray, RayHit hit)
         // pdf(x) = (ωi⋅n)/π = cosθsinθ/π, https://puluo.top/%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E7%A7%AF%E5%88%86%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E9%87%87%E6%A0%B7/
         // 这个就是最简单的 Importance Sampling： Cosine Sampling
         // L(x,ωo)=1/N * ∑kdL(x, ωi) 
-        //ray.direction = SampleHemisphere2(hit.normal, 1);
-        //ray.energy *= hit.albedo;
-        
-        // step 7. 此时画面会有大量噪点   
-        //hit.albedo = lerp(hit.albedo, hit.albedo * 0.6f, hit.metallic);
-        //float specChance = energy(hit.albedo * 0.6f);   
-        //float diffChance = energy(hit.albedo);
-        //float sum = specChance + diffChance;
-        //specChance /= sum;
-        //diffChance /= sum;
-        //// Roulette-select the ray's path
-        //float roulette = rand();
-        //if (roulette < specChance)
-        //{
-        //    // Specular reflection
-        //    ray.direction = reflect(ray.direction, hit.normal);
-        //    ray.energy *= (1.0f / specChance) * hit.albedo * 0.1f * saturate(dot(hit.normal, ray.direction));
-        //}
-        //else
-        //{
-        //    // Diffuse reflection
-        //    ray.direction = SampleHemisphere(hit.normal);
-        //    ray.energy *= (1.0f / diffChance) * 2 * hit.albedo * saturate(dot(hit.normal, ray.direction));
-        //}
+        float3 specularColor = lerp(hit.albedo, hit.albedo * 0.1f, hit.metallic);
+        float3 reflected = reflect(ray.direction, hit.normal);
+        float alpha = smoothness2PhongAlpha(hit.smoothness);
+        float3 diffuse = 2 * min(1.0f - specularColor, hit.albedo);
+        float3 direction;
+        if (isCosineSample)
+            direction = CosineSampleHemisphere(hit.normal);
+        else
+            direction = UniformSampleHemisphere(hit.normal);
+        ray.direction = direction;
 
+        float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflected, ray.direction)), alpha);
+        ray.energy *= (diffuse + specular) * saturate(dot(hit.normal, ray.direction));
+        
         // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
         return 0;
     }
@@ -485,117 +506,6 @@ float3 Shade(inout Ray ray, RayHit hit)
         ray.energy = 0.0f;
         return SkyboxCube.SampleLevel(_LinearClamp, ray.direction, 0).xyz;
     }
-
-    //// Add Reflection
-    //if (hit.distance < 1.#INF)
-    //{
-    //    // Step 1
-    //    // Reflect the ray and multiply energy with specular reflection
-    //    ray.origin = hit.position + hit.normal * 0.01f;
-    //    ray.direction = reflect(ray.direction, hit.normal);
-
-    //    // 仅仅用来测试能量的衰减
-    //    ray.energy *= 0.85;
-
-    //    //Test hard shadow
-    //    //Add a minor bias to avoid shadow acne
-    //    Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -_DirectionalLight.xyz);
-    //    RayHit shadowHit = Trace(shadowRay);
-    //    if (shadowHit.distance != 1.#INF)
-    //    {
-    //        ray.energy = 0.2;
-    //        return 0;
-    //    }
-
-    //    // Return nothing
-    //    return 0.2 * hit.albedo * saturate(dot(hit.normal, -_DirectionalLight.xyz));
-
-
-
-
-    //    // Step 2
-    //    ray.origin = hit.position + hit.normal * 0.01f;
-    //    ray.direction = reflect(ray.direction, hit.normal);
-    //    // Add lambert lighting model
-    //    float3 ambient = 0;
-    //    float3 albedo = hit.albedo;
-    //    float3 halfLambert = saturate(dot(hit.normal, -_DirectionalLight.xyz) * 0.5 + 0.5);
-    //    float3 lambert = saturate(dot(hit.normal, -_DirectionalLight.xyz));
-    //    float3 diffuse = ambient + albedo * halfLambert;
-    //    // 测试带diffuse的能量衰减
-    //    ray.energy *= diffuse * _DirectionalLight.w * _DirectionalLightColor.rgb;
-    //    return 0;
-    //    //return diffuse * _DirectionalLight.w * _DirectionalLightColor.rgb;
-
-    //    // 以上都是Whitted ray trace，没有考虑真正的渲染方程，即漫反射, 间接光
-    //    // 不能很好的模拟 Glossy（金属，类似磨砂的感觉） 材质的物体, 能产生高光，但是又有点糊，没有那么光滑, The Utah Teapot（经典模型）
-    //    // 先测试漫反射
-    //    // 我们通过每次对光线方向的采样从而解出方程，假设每次采样100条，
-    //    // 那么从人眼出发的第一次采样就是100条，在进行第二次反射之后就是10000条，依次类推，
-    //    // 反射越多次光线数量便会爆炸增长，计算量会无法负担，那么如何才能使得光线数量不爆炸增长呢？
-    //    // 唯有每次只采样一个方向
-    //    ray.direction = SampleHemisphere(hit.normal);
-    //    lambert = saturate(dot(hit.normal, ray.direction));
-    //    halfLambert = saturate(dot(hit.normal, ray.direction) * 0.5 + 0.5);
-    //    // 这里的 常数项2是从Monte Carlo积分中计算出来的
-    //    diffuse = hit.albedo * lambert;
-    //    // L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi)
-    //    // The emission Le(x,ωo) is simply the return value of our Shade function. 
-    //    // The 1/N is what happens already in our AddShader. 
-    //    // The multiplication with L(x,ωi) happens when we reflect the ray and trace it further. 
-    //    // Our mission is to fill the "2πfr(x,ωi,ωo)(ωi⋅n)" of the equation with some life.
-    //    //ray.energy *= diffuse/* * _DirectionalLight.w * _DirectionalLightColor.rgb*/;
-    //    //return 0;
-
-    //    //// Phong shading
-    //    //ray.direction = SampleHemisphere(hit.normal);
-    //    //float3 reflected = reflect(ray.direction, hit.normal);
-    //    //float3 specular = pow(saturate(dot(ray.direction, reflected) * 0.5 + 0.5), 500.5);
-    //    //ray.energy *= 40 * specular;
-    //    //return 0;
-
-    //    float3 reflected = reflect(ray.direction, hit.normal);
-    //    //diffuse = 2 * min(1.0f - hit.smoothness, hit.albedo);
-    //    float alpha = 300;
-
-    //    float3 specular = 1.1 * hit.smoothness * (alpha + 2) * pow(saturate(dot(ray.direction, reflected)), alpha);
-    //    ray.energy *= diffuse + specular;
-    //    return 0.0f;
-
-    //    //// 目前会有很多噪点
-    //    //hit.albedo = min(1.0f - hit.smoothness, hit.albedo);
-    //    //float specChance = energy(hit.smoothness);
-    //    //float diffChance = energy(hit.albedo);
-    //    //float sum = specChance + diffChance;
-    //    //specChance /= sum;
-    //    //diffChance /= sum;
-
-    //    //// Roulette-select the ray's path
-    //    //float roulette = rand();
-    //    ////if (roulette < specChance)
-    //    //{
-    //    //    // Specular reflection
-    //    //    ray.origin = hit.position + hit.normal * 0.001f;
-    //    //    ray.direction = reflect(ray.direction, hit.normal);
-    //    //    ray.energy *= /*(1.0f / specChance) * hit.smoothness * */saturate(dot(hit.normal, ray.direction));
-    //    //}
-    //    ////else
-    //    ////{
-    //    ////    // Diffuse reflection
-    //    ////    ray.origin = hit.position + hit.normal * 0.001f;
-    //    ////    ray.direction = SampleHemisphere(hit.normal);
-    //    ////    ray.energy *= (1.0f / diffChance) * 2 * hit.albedo * saturate(dot(hit.normal, ray.direction));
-    //    ////}
-
-    //    //return 0.0f;
-    //}
-    //else
-    //{
-    //    // Erase the ray's energy - the sky doesn't reflect anything
-    //    ray.energy = 0.0f;
-    //    // Sample the skybox and write it
-    //    return SkyboxCube.SampleLevel(_LinearClamp, ray.direction, 0).xyz;
-    //}
 }
 
 [numthreads(32, 32, 1)]
