@@ -244,7 +244,7 @@ public class RayTracingMaster : MonoBehaviour
         {
             Dictionary<Renderer, float> di = new Dictionary<Renderer, float>();
             // Sort by distance first
-            foreach(Renderer r in sphereParent.GetComponentsInChildren<Renderer>())
+            foreach(Renderer r in sphereParent.GetComponentsInChildren<Renderer>(false))
             {
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
@@ -266,6 +266,9 @@ public class RayTracingMaster : MonoBehaviour
                 spheres[i] = sphere;
             }
 
+            if (spheres.Length == 0)
+                spheres = new Sphere[1];
+
             if (sphereCB == null)
                 sphereCB = new ComputeBuffer(spheres.Length, sizeof(float) * 9);
             sphereCB.SetData(spheres);
@@ -278,7 +281,7 @@ public class RayTracingMaster : MonoBehaviour
         {
             Dictionary<Renderer, float> di = new Dictionary<Renderer, float>();
             // Sort by distance first
-            foreach (Renderer r in planeParent.GetComponentsInChildren<Renderer>())
+            foreach (Renderer r in planeParent.GetComponentsInChildren<Renderer>(false))
             {
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
@@ -304,6 +307,9 @@ public class RayTracingMaster : MonoBehaviour
                 planes[i] = plane;
             }
 
+            if (planes.Length == 0)
+                planes = new Plane[1];
+
             if (planeCB == null)
                 planeCB = new ComputeBuffer(planes.Length, sizeof(float) * 14);
             planeCB.SetData(planes);
@@ -317,7 +323,7 @@ public class RayTracingMaster : MonoBehaviour
         {
             Dictionary<MeshRenderer, float> di = new Dictionary<MeshRenderer, float>();
             // Sort by distance first
-            foreach (MeshRenderer r in meshParent.GetComponentsInChildren<MeshRenderer>())
+            foreach (MeshRenderer r in meshParent.GetComponentsInChildren<MeshRenderer>(false))
             {
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
@@ -356,6 +362,13 @@ public class RayTracingMaster : MonoBehaviour
                 cmeshes[i] = cmesh;
             }
 
+            if (cmeshes.Length == 0)
+            {
+                cmeshes = new CMesh[1];
+                vertices.Add(Vector3.zero);
+                indices.Add(0);
+            }
+
             if (meshCB == null)
                 meshCB = new ComputeBuffer(cmeshes.Length, sizeof(float) * 21 + sizeof(int) * 2);
             meshCB.SetData(cmeshes);
@@ -377,5 +390,7 @@ public class RayTracingMaster : MonoBehaviour
 
         // chapter 3.1
         meshCB?.Release();
+        vertexCB?.Release();
+        indexCB?.Release();
     }
 }

@@ -551,7 +551,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     // Reflection
     float3 col = float3(0, 0, 0);
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 6; i++)
     {
         RayHit hit = Trace(ray);
         // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
