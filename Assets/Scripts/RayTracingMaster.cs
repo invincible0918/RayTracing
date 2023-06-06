@@ -246,6 +246,8 @@ public class RayTracingMaster : MonoBehaviour
             // Sort by distance first
             foreach(Renderer r in sphereParent.GetComponentsInChildren<Renderer>(false))
             {
+                if (!r.gameObject.activeInHierarchy)
+                    continue;
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
             }
@@ -283,6 +285,8 @@ public class RayTracingMaster : MonoBehaviour
             // Sort by distance first
             foreach (Renderer r in planeParent.GetComponentsInChildren<Renderer>(false))
             {
+                if (!r.gameObject.activeInHierarchy)
+                    continue;
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
             }
@@ -325,6 +329,8 @@ public class RayTracingMaster : MonoBehaviour
             // Sort by distance first
             foreach (MeshRenderer r in meshParent.GetComponentsInChildren<MeshRenderer>(false))
             {
+                if (!r.gameObject.activeInHierarchy)
+                    continue;
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
             }

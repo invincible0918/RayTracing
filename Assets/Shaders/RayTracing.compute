@@ -68,6 +68,10 @@ int DestinationWidth;
 int DestinationHeight;
 #endif
 
+// Utilize BVH for optimization
+// #define BRUTE_FORCE 1
+
+
 // range: 0~1
 float rand()
 {
@@ -326,11 +330,24 @@ RayHit Trace(Ray ray)
     _MeshBuffer.GetDimensions(count2, stride2);
 #endif
 
+    /*
     for (uint i = 0; i < count2; ++i)
     {
         CMesh cmesh = _MeshBuffer[i];
         IntersectMesh(ray, cmesh, hit);
     }
+    */
+#ifdef BRUTE_FORCE
+    for (uint i = 0; i < count2; ++i)
+    {
+        CMesh cmesh = _MeshBuffer[i];
+        IntersectMesh(ray, cmesh, hit);
+    }
+//#else
+//    IntersectBVH(ray, bestHit);
+#endif
+
+
 
     return hit;
 }
