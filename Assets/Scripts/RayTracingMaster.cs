@@ -336,11 +336,11 @@ public class RayTracingMaster : MonoBehaviour
             }
             di = di.OrderByDescending(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
 
+            MeshRenderer[] rs = di.Keys.ToArray();
+
             cmeshes = new CMesh[di.Keys.Count];
             indices.Clear();
             vertices.Clear();
-
-            MeshRenderer[] rs = di.Keys.ToArray();
 
             for (int i = 0; i < rs.Length; ++i)
             {
@@ -386,6 +386,9 @@ public class RayTracingMaster : MonoBehaviour
             if (indexCB == null)
                 indexCB = new ComputeBuffer(indices.Count, sizeof(int));
             indexCB.SetData(indices);
+
+            // BVH
+            BVHTree tree = new BVHTree(mr);
         }
     }
 
