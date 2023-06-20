@@ -388,7 +388,7 @@ public class RayTracingMaster : MonoBehaviour
             indexCB.SetData(indices);
 
             // BVH
-            BVHTree tree = new BVHTree(mr);
+            //BVHTree tree = new BVHTree(mr));
         }
     }
 

@@ -1,0 +1,12 @@
+﻿#pragma kernel TreeConstructor
+#pragma kernel BVHConstructor
+
+[numthreads(256, 1, 1)]
+void TreeConstructor(uint3 id : SV_DispatchThreadID)
+{
+}
+
+[numthreads(256, 1, 1)]
+void BVHConstructor(uint3 id : SV_DispatchThreadID)
+{
+}
