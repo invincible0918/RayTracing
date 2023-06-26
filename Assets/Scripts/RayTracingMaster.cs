@@ -76,6 +76,9 @@ public class RayTracingMaster : MonoBehaviour
     ComputeBuffer vertexCB;
     ComputeBuffer indexCB;
 
+    // BVH
+    public BVH bvh;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -388,7 +391,7 @@ public class RayTracingMaster : MonoBehaviour
             indexCB.SetData(indices);
 
             // BVH
-            //BVHTree tree = new BVHTree(mr));
+            bvh.Calculate(rs);
         }
     }
 
