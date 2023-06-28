@@ -1,4 +1,4 @@
-#pragma use_dxc
+#pragma use_dxc // https://pixelalchemy.dev/posts/wave-intrinsics-in-unity/, https://docs.google.com/document/d/1yHARKE5NwOGmWKZY2z3EPwSz5V_ZxTDT8RnRl521iyE/edit#heading=h.39v0g15e9zo1 it only works in DX12, vukan, and metal
 #pragma kernel LocalRadixSort
 
 #include "Constants.cginc"
@@ -96,7 +96,7 @@ void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     const uint value = valuesTile[threadId];
     GroupMemoryBarrierWithGroupSync();
 
-    sortedBlocksKeysData[groupId * THREADS_PER_BLOCK + threadId] = 12;//key;
+    sortedBlocksKeysData[groupId * THREADS_PER_BLOCK + threadId] = key;
     sortedBlocksValuesData[groupId * THREADS_PER_BLOCK + threadId] = value;
     
     radixTile[threadId] = (key >> bitOffset) & (BUCKET_SIZE - 1);
