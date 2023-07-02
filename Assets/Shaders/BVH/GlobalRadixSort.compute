@@ -38,3 +38,4 @@ void GlobalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     sortedKeysData[indexOutput] = key;
     sortedValuesData[indexOutput] = value;
 }
+

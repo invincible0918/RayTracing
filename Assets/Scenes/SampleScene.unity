@@ -1428,10 +1428,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58d7fb00927ad4a66819dcc657ae56b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  cs: {fileID: 7200000, guid: 049b861390935c248b4d9d2569757d56, type: 3}
   localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
   globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
+  bvhShader: {fileID: 7200000, guid: 54cbbe9726fbbce42ba08f5bded50a16, type: 3}
+  debugDataType: 2
+  debugTriangleIndexRange: {x: 0, y: 100}
+  mesh: {fileID: 0}
 --- !u!1 &998443469
 GameObject:
   m_ObjectHideFlags: 0
@@ -3072,15 +3075,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.36770183
+      value: -0.2744626
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.9299438
+      value: 0.96159774
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalRotation.z
@@ -3092,7 +3095,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 223.148
+      value: 211.86
       objectReference: {fileID: 0}
     - target: {fileID: 322281642794262046, guid: 4c91c297f09c57c40a36504d49d6e323, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
