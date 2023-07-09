@@ -35,20 +35,17 @@ struct LeafNode
 
 struct Triangle
 {
-    float3 a;
-    float _dummy0;
-    float3 b;
-    float _dummy1;
-    float3 c;
-    float _dummy2;
-    float2 a_uv;
-    float2 b_uv;
-    float2 c_uv;
-    float2 _dummy3;
-    float3 a_normal;
-    float _dummy4;
-    float3 b_normal;
-    float _dummy5;
-    float3 c_normal;
-    float _dummy6;
-};
+    float3 point0;
+    float3 point1;
+    float3 point2;
+    float3 normal0;
+    float3 normal1;
+    float3 normal2;
+    float3 tangent0;
+    float3 tangent1;
+    float3 tangent2;
+    float2 uv0;
+    float2 uv1;
+    float2 uv2;
+    uint materialIndex;
+};  

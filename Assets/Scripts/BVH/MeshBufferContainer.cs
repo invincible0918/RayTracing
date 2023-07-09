@@ -15,19 +15,24 @@ public class MeshBufferContainer : IDisposable
     };
 
     public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;
-    public uint[] KeysData => _keysBuffer.LocalBuffer;
     public ComputeBuffer TriangleIndex => _triangleIndexBuffer.DeviceBuffer;
     public ComputeBuffer TriangleData => _triangleDataBuffer.DeviceBuffer;
     public ComputeBuffer TriangleAABB => _triangleAABBBuffer.DeviceBuffer;
     public ComputeBuffer BvhData => _bvhDataBuffer.DeviceBuffer;
     public ComputeBuffer BvhLeafNode => _bvhLeafNodesBuffer.DeviceBuffer;
     public ComputeBuffer BvhInternalNode => _bvhInternalNodesBuffer.DeviceBuffer;
+    public uint[] KeysData => _keysBuffer.LocalBuffer;
+    public uint[] ValuesData => _triangleIndexBuffer.LocalBuffer;
 
     public AABB[] TriangleAABBLocalData => _triangleAABBBuffer.LocalBuffer;
     public AABB[] BVHLocalData => _bvhDataBuffer.LocalBuffer;
     public LeafNode[] BvhLeafNodeLocalData => _bvhLeafNodesBuffer.LocalBuffer;
     public InternalNode[] BvhInternalNodeLocalData => _bvhInternalNodesBuffer.LocalBuffer;
     public uint TrianglesLength => _trianglesLength;
+
+    public GraphicsBuffer IndexBuffer => _indexBuffer;
+    public GraphicsBuffer VertexBuffer => _vertexBuffer;
+    public Bounds Bounds => _bounds;
 
     private static uint ExpandBits(uint v)
     {
@@ -93,11 +98,16 @@ public class MeshBufferContainer : IDisposable
     private readonly DataBuffer<LeafNode> _bvhLeafNodesBuffer;
     private readonly DataBuffer<InternalNode> _bvhInternalNodesBuffer;
 
-    public MeshBufferContainer(Mesh mesh, ComputeShader meshShader) // TODO multiple meshes
+    private readonly GraphicsBuffer _indexBuffer;
+    private readonly GraphicsBuffer _vertexBuffer;
+
+    private readonly Bounds _bounds;
+
+    public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
     {
-        if (Marshal.SizeOf(typeof(Triangle)) != 128)
+        if (Marshal.SizeOf(typeof(Triangle)) != 144)
         {
-            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 128");
+            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 144");
         }
 
         if (Marshal.SizeOf(typeof(AABB)) != 32)
@@ -114,67 +124,15 @@ public class MeshBufferContainer : IDisposable
         _bvhLeafNodesBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT, LeafNode.NullLeaf);
         _bvhInternalNodesBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT, InternalNode.NullLeaf);
 
-        Vector3[] vertices = mesh.vertices;
-        int[] triangles = mesh.triangles;
-        Vector2[] uvs = mesh.uv;
-        Vector3[] normals = mesh.normals;
-        _trianglesLength = (uint)triangles.Length / 3;
-
-        for (uint i = 0; i < _trianglesLength; i++)
+        _bounds = new Bounds
         {
-            Vector3 a = vertices[triangles[i * 3 + 0]];
-            Vector3 b = vertices[triangles[i * 3 + 1]];
-            Vector3 c = vertices[triangles[i * 3 + 2]];
-            GetCentroidAndAABB(a, b, c, out var centroid, out var aabb);
-            centroid = NormalizeCentroid(centroid);
-            uint mortonCode = Morton3D(centroid.x, centroid.y, centroid.z);
-            _keysBuffer[i] = mortonCode;
-            _triangleIndexBuffer[i] = i;
-            _triangleDataBuffer[i] = new Triangle
-            {
-                a = a,
-                b = b,
-                c = c,
-                a_uv = uvs[triangles[i * 3 + 0]],
-                b_uv = uvs[triangles[i * 3 + 1]],
-                c_uv = uvs[triangles[i * 3 + 2]],
-                a_normal = normals[triangles[i * 3 + 0]],
-                b_normal = normals[triangles[i * 3 + 1]],
-                c_normal = normals[triangles[i * 3 + 2]],
-            };
-            _triangleAABBBuffer[i] = aabb;
-        }
+            min = Whole.min,
+            max = Whole.max
+        };// 不要使用真实的mesh bounds，因为数值太小了，mesh.bounds;
+        _trianglesLength = (uint)mesh.triangles.Length / 3;
 
-
-        //int kernelCalculateAABB = meshShader.FindKernel("CalculateAABB");
-
-        //// Byte Address Buffer, 读写的时候，把buffer里的内容（byte）做偏移，可用于寻址
-        //// 对应的是HLSL的ByteAddressBuffer，RWByteAddressBuffer
-        //// 4 (32-bit indices)
-        //// IndexFormat.UInt16: 2 byte, 范围 0～65535 
-        //// IndexFormat.UInt32: 4 byte, 范围 0～4294967295 
-        //GraphicsBuffer indexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Index | GraphicsBuffer.Target.Raw, indices.Count, sizeof(int));
-        //indexBuffer.SetData(triangles);
-
-        //GraphicsBuffer vertexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Vertex | GraphicsBuffer.Target.Raw, vertices.Count, 3 * sizeof(float));
-        //vertexBuffer.SetData(vertices);
-
-        //meshShader.SetBuffer(kernelCalculateAABB, "indexBuffer", indexBuffer);
-        //meshShader.SetBuffer(kernelCalculateAABB, "vertexBuffer", vertexBuffer);
-        //meshShader.SetBuffer(kernelCalculateAABB, "aabbBuffer", _triangleAABBBuffer);
-        //meshShader.SetBuffer(kernelCalculateAABB, "triangleIndexBuffer", triangleIndexBuffer);
-
-        //int groups = Mathf.CeilToInt(_trianglesLength / (float)Constants.THREADS_PER_BLOCK);
-        //meshShader.Dispatch(kernelCalculateAABB, groups, 1, 1);
-
-
-
-
-
-        _keysBuffer.Sync();
-        _triangleIndexBuffer.Sync();
-        _triangleDataBuffer.Sync();
-        _triangleAABBBuffer.Sync();
+        _indexBuffer = mesh.GetIndexBuffer();
+        _vertexBuffer = mesh.GetVertexBuffer(0);
     }
 
     public void DistributeKeys()
@@ -204,25 +162,27 @@ public class MeshBufferContainer : IDisposable
         _bvhLeafNodesBuffer.GetData();
         _bvhInternalNodesBuffer.GetData();
 
-        for (uint i = 0; i < _trianglesLength; i++)
-        {
-            if (_bvhLeafNodesBuffer[i].index == 0xFFFFFFFF && _bvhLeafNodesBuffer[i].parent == 0xFFFFFFFF)
-            {
-                Debug.LogErrorFormat("LEAF CORRUPTED {0}", i);
-            }
-        }
+        // debug
+        //for (uint i = 0; i < _trianglesLength; i++)
+        //{
+        //    if (_bvhLeafNodesBuffer[i].index == 0xFFFFFFFF && _bvhLeafNodesBuffer[i].parent == 0xFFFFFFFF)
+        //    {
+        //        Debug.LogErrorFormat("LEAF CORRUPTED {0}", i);
+        //    }
+        //}
 
-        for (uint i = 0; i < _trianglesLength - 1; i++)
-        {
-            if (_bvhInternalNodesBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodesBuffer[i].parent == 0xFFFFFFFF)
-            {
-                Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
-            }
-        }
+        //for (uint i = 0; i < _trianglesLength - 1; i++)
+        //{
+        //    if (_bvhInternalNodesBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodesBuffer[i].parent == 0xFFFFFFFF)
+        //    {
+        //        Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
+        //    }
+        //}
     }
 
     public void PrintData()
     {
+        Debug.Log(_triangleIndexBuffer);
         Debug.Log(_keysBuffer);
         Debug.Log(_bvhInternalNodesBuffer);
         Debug.Log(_bvhLeafNodesBuffer);

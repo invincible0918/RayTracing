@@ -5,8 +5,8 @@
 // with cs.SetTexture
 RWStructuredBuffer<float3> directions;
 
-float2 _Pixel;
-float _Seed;
+float2 _pixel;
+float seed;
 bool isCosineSample;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
@@ -14,14 +14,14 @@ static const float EPSILON = 1e-8;
 // range: 0~1
 float rand()
 {
-    float result = frac(sin(_Seed / 100.0f * dot(_Pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
-    _Seed += 1.0f;
+    float result = frac(sin(seed / 100.0f * dot(_pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
+    seed += 1.0f;
     return result;
 }
 
 float2 hash2()
 {
-    return frac(sin(_Pixel) * float2(43758.5453123, 22578.1459123));
+    return frac(sin(_pixel) * float2(43758.5453123, 22578.1459123));
 }
 
 
@@ -95,8 +95,8 @@ float3 CosineSampleHemisphere(float3 normal)
 [numthreads(32, 1, 1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    _Pixel = id.xy;
-    //_Pixel = id.x + id.y * 3.43121412313;
+    _pixel = id.xy;
+    //_pixel = id.x + id.y * 3.43121412313;
 
     float3 direction;
     if (isCosineSample)

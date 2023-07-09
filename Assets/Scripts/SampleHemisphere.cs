@@ -22,7 +22,7 @@ public class SampleHemisphere : MonoBehaviour
         directions = new Vector3[count];
         cs.SetBuffer(0, "directions", cb);
         cs.SetBool("isCosineSample", isCosineSample);
-        cs.SetFloat("_Seed", Random.value);
+        cs.SetFloat("seed", Random.value);
         //seeds = new float[count];
         //for (int i = 0; i < directions.Length; ++i)
         //{

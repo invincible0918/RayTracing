@@ -19,24 +19,23 @@ public struct AABB
 public struct Triangle
 {
     public Vector3 a;
-    float _dummy0;
     public Vector3 b;
-    float _dummy1;
     public Vector3 c;
-    float _dummy2;
     public Vector2 a_uv;
     public Vector2 b_uv;
     public Vector2 c_uv;
-    Vector2 _dummy3;
 
     public Vector3 a_normal;
-    float _dummy4;
     public Vector3 b_normal;
-    float _dummy5;
     public Vector3 c_normal;
-    float _dummy6;
-    
-    
+
+    public Vector3 a_tangent;
+    public Vector3 b_tangent;
+    public Vector3 c_tangent;
+
+    Vector3 _dummy0;
+
+
     // TODO texture index, etc
 }
 
