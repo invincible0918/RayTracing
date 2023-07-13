@@ -154,13 +154,14 @@ float3 Shade(inout Ray ray, RayHit hit)
         float3 specularColor = lerp(hit.albedo, hit.albedo * 0.1f, hit.metallic);
         float3 reflected = reflect(ray.direction, hit.normal);
         float alpha = smoothness2PhongAlpha(hit.smoothness);
-        float3 diffuse = 2 * min(1.0f - specularColor, hit.albedo);
+        float3 diffuse = hit.albedo;//2 * min(1.0f - specularColor, hit.albedo);
         float3 direction;
 
 #ifdef COSINE_SAMPLE
         direction = CosineSampleHemisphere(hit.normal);
-#endif
+#else
         direction = UniformSampleHemisphere(hit.normal);
+#endif
 
         ray.direction = direction;
 

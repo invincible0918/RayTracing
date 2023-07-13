@@ -9,6 +9,38 @@
 //    return sphere;
 //}
 
+// sphere
+struct Sphere
+{
+    float3 center;
+    float radius;
+    float3 albedo;
+    float metallic;
+    float smoothness;
+};
+
+// plane
+struct Plane
+{
+    float3 normal;
+    float3 position;
+    float3 size;
+    float3 albedo;
+    float metallic;
+    float smoothness;
+};
+
+// chapter 3.1
+struct CMesh
+{
+    float4x4 localToWorldMatrix;
+    int indicesOffset;
+    int indicesCount;
+    float3 albedo;
+    float metallic;
+    float smoothness;
+};
+
 StructuredBuffer<Sphere> sphereBuffer;
 StructuredBuffer<Plane> planeBuffer;
 

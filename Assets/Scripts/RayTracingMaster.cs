@@ -223,7 +223,7 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetFloat("seed", Random.value);
 
         cs.Dispatch(kernelHandle, groupX, groupY, 1);
-
+        //bvh.Update();
         if (!aliasing)
             Graphics.Blit(rt, destination);
         else

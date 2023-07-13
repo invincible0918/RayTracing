@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 
 public class BVH : MonoBehaviour
 {
+    public bool debugRef;
     // 0. 大致框架
     public Transform meshParent;
 
@@ -33,6 +34,7 @@ public class BVH : MonoBehaviour
     MeshBufferContainer _container;
     ComputeBufferSorter<uint, uint> _sorter;
     BVHConstructor _bvhConstructor;
+    ComputeBuffer materialDataBuffer;
 
     struct MeshVertex
     {
@@ -42,32 +44,40 @@ public class BVH : MonoBehaviour
         public Vector2 uv;
     }
 
+    struct MaterialData
+    {
+        public Vector3 albedo;
+        public float metallic;
+        public float smoothness;
+    }
+
     public void Init(ComputeShader shader, int handle)
     {
         rayTracingShader = shader;
         kernelHandle = handle;
 
-        MeshRenderer[] mrs = meshParent.GetComponentsInChildren<MeshRenderer>(false);
-        
+        MeshRenderer[] mrs = (from mr in meshParent.GetComponentsInChildren<MeshRenderer>(false) where mr.gameObject.activeInHierarchy select mr).ToArray();
+
         // 构造BVH的基本流程：1. 构造ZOrder Curve & Morton Code 2. 排序 3 构造子节点 4 构造内部节点 5 更新AABB
         // http://ma-yidong.com/2018/11/10/construct-bvh-with-unity-job-system/
 
         System.DateTime beforeDT = System.DateTime.Now;
 
         // 1. 构造 AABB
-        InitMesh(mrs, out mesh, out List<int> materialIndices, out List<Material> materials);
-        _container = new MeshBufferContainer(mesh);
+        InitMesh(mrs, out mesh, out List<uint> materialIndices, out List<Material> materials);
+        _container = new MeshBufferContainer(mesh, materialIndices, debugRef);
 
         // 2. 构造 AABB, Morton Code
-        MeshData.Calculate(_container.TrianglesLength,
+        if (!debugRef)
+            MeshData.Calculate(_container.TrianglesLength,
             _container.VertexBuffer,
             _container.IndexBuffer,
             _container.Keys,
             _container.TriangleIndex,
             _container.TriangleAABB,
             _container.TriangleData,
+            _container.MaterialIndexBuffer,
             _container.Bounds,
-            materialIndices,
             meshShader);
 
         Debug.Log("Before BVH");
@@ -100,23 +110,34 @@ public class BVH : MonoBehaviour
 
         Debug.Log("After BVH");
         _container.GetAllGpuData();
-        //_container.PrintData();
+        _container.PrintData();
 
         System.DateTime afterDT = System.DateTime.Now;
         System.TimeSpan ts = afterDT.Subtract(beforeDT);
         Debug.Log("BVH spent: " + ts.TotalMilliseconds);
 
-        // 5. 开始渲染
+        //Debug.Log("TriangleAABB stride: " + _container.TriangleAABB.stride);
+        //Debug.Log("TriangleAABB count: " + _container.TriangleAABB.count);
+        //AABB[] aabbs = new AABB[_container.TriangleAABB.count];
+        //_container.TriangleAABB.GetData(aabbs);
+        //for (int i = 0; i < _container.TriangleAABB.count; ++i)
+        //    Debug.Log(aabbs[i].ToString());
+
+        // 5. 收集材质球
+        InitMaterialData(materials);
+
+        // 6. 开始渲染
         rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndices", _container.TriangleIndex);
         rayTracingShader.SetBuffer(kernelHandle, "triangleAABB", _container.TriangleAABB);
         rayTracingShader.SetBuffer(kernelHandle, "internalNodes", _container.BvhInternalNode);
         rayTracingShader.SetBuffer(kernelHandle, "leafNodes", _container.BvhLeafNode);
         rayTracingShader.SetBuffer(kernelHandle, "bvhData", _container.BvhData);
         rayTracingShader.SetBuffer(kernelHandle, "triangleData", _container.TriangleData);
+        rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
     }
 
     // 1. 构造 AABB
-    void InitMesh(MeshRenderer[] mrs, out Mesh mesh, out List<int> materialIndices, out List<Material> materials)
+    void InitMesh(MeshRenderer[] mrs, out Mesh mesh, out List<uint> materialIndices, out List<Material> materials)
     {
         List<int> indices = new List<int>();
         List<Vector3> vertices = new List<Vector3>();
@@ -125,11 +146,11 @@ public class BVH : MonoBehaviour
         List<Vector2> uvs = new List<Vector2>();
 
         // 处理材质
-        materialIndices = new List<int>();    // 这里存贮的是每一个顶点的材质id
+        materialIndices = new List<uint>();    // 这里存贮的是每一个三角面的材质id
         materials = new List<Material>();
 
         int indexOffset = 0;
-        int materialIndex = 0;
+        uint materialIndex = 0;
         Bounds encompassingAABB = mrs[0].bounds;
 
         // 1.0 create triangle structure
@@ -152,15 +173,17 @@ public class BVH : MonoBehaviour
             uvs.AddRange(_uvs);
 
             // 处理材质
-            Material mat = mr.material;
+            // 得到所有的三角面，而不是所有顶点
+            int[] polygons = m.triangles.Where((value, index) => index % 3 == 0).ToArray();
+            Material mat = mr.sharedMaterial;
             if (materials.Contains(mat))
             {
-                int index = materials.IndexOf(mat);
-                materialIndices.AddRange(m.triangles.Select(i => index));
+                uint index = (uint)materials.IndexOf(mat);
+                materialIndices.AddRange(polygons.Select(i => index));
             }
             else
             {
-                materialIndices.AddRange(m.triangles.Select(i => materialIndex));
+                materialIndices.AddRange(polygons.Select(i => materialIndex));
 
                 materials.Add(mat);
                 materialIndex += 1;
@@ -217,11 +240,25 @@ public class BVH : MonoBehaviour
         mesh.bounds = encompassingAABB;
     }
 
+    void InitMaterialData(List<Material> materials)
+    {
+        List<MaterialData> datas = (from m in materials select new MaterialData
+        {
+            albedo = new Vector3(m.color.r, m.color.g, m.color.b),
+            metallic = Mathf.Max(0.01f, m.GetFloat("_Metallic")),
+            smoothness = Mathf.Max(0.01f, m.GetFloat("_Glossiness"))
+        }).ToList();
+
+        materialDataBuffer = new ComputeBuffer(materials.Count, sizeof(float) * 5);
+        materialDataBuffer.SetData(datas);
+    }
+
     private void OnDestroy()
     {
         _sorter?.Dispose();
         _container?.Dispose();
         _bvhConstructor?.Dispose();
+        materialDataBuffer?.Dispose();
     }
 
     #region Debug
@@ -248,7 +285,7 @@ public class BVH : MonoBehaviour
             case DebugDataType.BeforeSort:
             case DebugDataType.AfterSort:
                 {
-                    Vector3[] vertices = new Vector3[_container.VertexBuffer.count];
+                    MeshVertex[] vertices = new MeshVertex[_container.VertexBuffer.count];
                     _container.VertexBuffer.GetData(vertices);
                     int[] triangles = new int[_container.IndexBuffer.count];
                     _container.IndexBuffer.GetData(triangles);
@@ -266,9 +303,9 @@ public class BVH : MonoBehaviour
                             int i1 = values[i][1];
                             int i2 = values[i][2];
 
-                            Vector3 v0 = vertices[i0];
-                            Vector3 v1 = vertices[i1];
-                            Vector3 v2 = vertices[i2];
+                            Vector3 v0 = vertices[i0].position;
+                            Vector3 v1 = vertices[i1].position;
+                            Vector3 v2 = vertices[i2].position;
                             Vector3 center = (v0 + v1 + v2) / 3;
 
                             Gizmos.DrawLine(center, start);
@@ -290,9 +327,9 @@ public class BVH : MonoBehaviour
                             int i1 = values[(int)sortedValues[i]][1];
                             int i2 = values[(int)sortedValues[i]][2];
 
-                            Vector3 v0 = vertices[i0];
-                            Vector3 v1 = vertices[i1];
-                            Vector3 v2 = vertices[i2];
+                            Vector3 v0 = vertices[i0].position;
+                            Vector3 v1 = vertices[i1].position;
+                            Vector3 v2 = vertices[i2].position;
                             Vector3 center = (v0 + v1 + v2) / 3;
 
                             Gizmos.DrawLine(center, start);

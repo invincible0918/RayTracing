@@ -1,12 +1,20 @@
 ﻿#include "Header.cginc"
 #include "BVH/Constants.cginc"
 
+struct MaterialData
+{
+    float3 albedo;
+    float metallic;
+    float smoothness;
+};
+
 StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<AABB> triangleAABB; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<InternalNode> internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
 StructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<AABB> bvhData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
 StructuredBuffer<Triangle> triangleData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<MaterialData> materialDataBuffer;
 
 bool RayBoxIntersection(AABB b, Ray r)
 {
@@ -34,11 +42,16 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
             {
                 hit.distance = t;
                 hit.position = ray.origin + t * ray.direction;
-                hit.normal = normalize(cross(tri.point1 - tri.point0, tri.point2 - tri.point0));
 
-                hit.albedo = 1;//mesh.albedo;
-                //hit.metallic = mesh.metallic;
-                //hit.smoothness = mesh.smoothness;
+                //const float2 uv = (1 - u - v) * tri.uv0 + u * tri.uv1 + v * tri.uv2;
+                const float3 normal = (1 - u - v) * tri.normal0 + u * tri.normal1 + v * tri.normal2;
+                hit.normal = normalize(normal);
+
+                MaterialData materialData = materialDataBuffer[tri.materialIndex];
+
+                hit.albedo = materialData.albedo;
+                hit.metallic = materialData.metallic;
+                hit.smoothness = materialData.smoothness;
             }
         }
     }

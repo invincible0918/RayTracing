@@ -6,13 +6,13 @@ public static class MeshData
 {
     public static void Calculate(uint dataLength,
         GraphicsBuffer vertexBuffer,
-        GraphicsBuffer indexBuffer, 
+        GraphicsBuffer indexBuffer,
         ComputeBuffer mortonCodeBuffer,
         ComputeBuffer triangleIndexBuffer,
         ComputeBuffer aabbBuffer,
         ComputeBuffer triangleDataBuffer,
+        ComputeBuffer materialIndexBuffer,
         Bounds bounds,
-        List<int> materialIndices,
         ComputeShader meshShader)
     {
         int kernelCalculate = meshShader.FindKernel("Calculate");
@@ -28,8 +28,8 @@ public static class MeshData
         //GraphicsBuffer vertexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Vertex | GraphicsBuffer.Target.Raw, vertices.Length, 3 * sizeof(float));
         //vertexBuffer.SetData(vertices);
 
-        ComputeBuffer materialIndexBuffer = new ComputeBuffer(triangleIndexBuffer.count, sizeof(uint));
-        materialIndexBuffer.SetData(materialIndices);
+        //ComputeBuffer materialIndexBuffer = new ComputeBuffer(triangleIndexBuffer.count, sizeof(uint));
+        //materialIndexBuffer.SetData(materialIndices);
 
         meshShader.SetBuffer(kernelCalculate, "indexBuffer", indexBuffer);
         meshShader.SetBuffer(kernelCalculate, "vertexBuffer", vertexBuffer);
@@ -38,10 +38,21 @@ public static class MeshData
         meshShader.SetBuffer(kernelCalculate, "triangleDataBuffer", triangleDataBuffer);
         meshShader.SetBuffer(kernelCalculate, "triangleIndexBuffer", triangleIndexBuffer);
         meshShader.SetBuffer(kernelCalculate, "mortonCodeBuffer", mortonCodeBuffer);
-        meshShader.SetInt("trianglesCount", (int) dataLength);
+        meshShader.SetInt("trianglesCount", (int)dataLength);
         meshShader.SetVector("encompassingAABBMin", bounds.min);
         meshShader.SetVector("encompassingAABBMax", bounds.max);
 
-        meshShader.Dispatch(kernelCalculate, Constants.BLOCK_SIZE, 1, 1);
+        meshShader.Dispatch(kernelCalculate, (int)dataLength, 1, 1);
+
+        // 使用以下写法则和bvh脚本中一样了，但是compute shader中需要修改
+        //meshShader.Dispatch(kernelCalculate, Constants.BLOCK_SIZE, 1, 1);
+        //void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
+        //{
+        //      //const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
+        //      if (id >= trianglesCount)
+        //          return;
+        //      AllMemoryBarrierWithGroupSync();
+        //            ...
+        //}
     }
 }

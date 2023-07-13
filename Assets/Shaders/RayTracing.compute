@@ -36,7 +36,7 @@ Ray CreateCameraRay(float2 uv)
     return CreateRay(camWS, directionWS);
 }
 
-[numthreads(32, 32, 1)]
+[numthreads(8, 8, 1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     _pixel = id.xy;
@@ -70,7 +70,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     // Reflection
     float3 col = float3(0, 0, 0);
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 5; i++)
     {
 #ifdef BRUTE_FORCE
         RayHit hit = BruteForceTrace(ray);

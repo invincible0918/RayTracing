@@ -1,4 +1,4 @@
-//#pragma use_dxc
+#pragma use_dxc
 #pragma kernel Calculate
 
 #include "Constants.cginc"
@@ -6,7 +6,7 @@
 // 1. 构造 AABB
 ByteAddressBuffer indexBuffer;
 ByteAddressBuffer vertexBuffer;
-StructuredBuffer<uint> materialIndexBuffer;
+StructuredBuffer<uint> materialIndexBuffer;// 这里存贮的是每一个三角面的材质id
 RWStructuredBuffer<AABB> aabbBuffer;
 RWStructuredBuffer<Triangle> triangleDataBuffer;
 RWStructuredBuffer<uint> triangleIndexBuffer;
@@ -52,11 +52,14 @@ uint MortonCode(float3 v)
 }
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
+//void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 void Calculate(uint id : SV_DispatchThreadID)
 {
+	//const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
 	if (id >= trianglesCount)
 		return;
 
+	//AllMemoryBarrierWithGroupSync();
     // 读取顶点索引
 	uint3 triIndex = indexBuffer.Load3(id * 3 * 4); // id * 3[triangle vertices] * 4[bytes]
 
@@ -68,24 +71,25 @@ void Calculate(uint id : SV_DispatchThreadID)
 	LoadVertex(triIndex.z, p2, n2, t2, uv2);
 
 	// 1. 构造 AABB
-	AABB aabb = aabbBuffer[id];
+	AABB aabb = (AABB)0;
 
+	// 最小最大值再做一个偏移，避免出现最大最小值是相同的问题，否则平面的模型绘制不出来
 	aabb.min = float3(
-		min(min(p0.x, p1.x), p2.x),
-		min(min(p0.y, p1.y), p2.y),
-		min(min(p0.z, p1.z), p2.z)
+		min(min(p0.x, p1.x), p2.x) - 0.001f,
+		min(min(p0.y, p1.y), p2.y) - 0.001f,
+		min(min(p0.z, p1.z), p2.z) - 0.001f
 		);
 	aabb.max = float3(
-		max(max(p0.x, p1.x), p2.x),
-		max(max(p0.y, p1.y), p2.y),
-		max(max(p0.z, p1.z), p2.z)
+		max(max(p0.x, p1.x), p2.x) + 0.001f,
+		max(max(p0.y, p1.y), p2.y) + 0.001f,
+		max(max(p0.z, p1.z), p2.z) + 0.001f
 		);
 
 	aabbBuffer[id] = aabb;
 	triangleIndexBuffer[id] = id;
 
 	//// 2. 构造 三角面数据
-	Triangle tri; 
+	Triangle tri = (Triangle)0; 
 
 	tri.point0 = p0;	
 	tri.point1 = p1;

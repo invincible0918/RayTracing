@@ -32,20 +32,43 @@ struct LeafNode
     uint parent;
     uint index;
 };
-
+// [StructLayout(LayoutKind.Sequential, Pack = 16)] 
+// The variable is now aligned with a 16-byte boundary, i.e., a float4
 struct Triangle
 {
+    // It's a pack: 4 float variables
     float3 point0;
+    float _dummy0;
+
     float3 point1;
+    float _dummy1;
+
     float3 point2;
-    float3 normal0;
-    float3 normal1;
-    float3 normal2;
-    float3 tangent0;
-    float3 tangent1;
-    float3 tangent2;
+    float _dummy2;
+
     float2 uv0;
     float2 uv1;
     float2 uv2;
-    uint materialIndex;
-};  
+    float2 _dummy3;
+
+    float3 normal0;
+    float _dummy4;
+
+    float3 normal1;
+    float _dummy5;
+
+    float3 normal2;
+    float _dummy6;
+
+    float3 tangent0;
+    float _dummy7;
+
+    float3 tangent1;
+    float _dummy8;
+
+    float3 tangent2;
+    float _dummy9;
+
+    int materialIndex;
+    float3 _dummy10;
+};
