@@ -82,6 +82,9 @@ void IntersectPlane(Ray ray, Plane plane, inout RayHit hit)
             hit.distance = t;
             hit.position = p;
             hit.normal = plane.normal;
+            hit.albedo = plane.albedo;
+            hit.metallic = plane.metallic;
+            hit.smoothness = plane.smoothness;
         }
     }
 }

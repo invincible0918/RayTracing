@@ -1,7 +1,7 @@
 ﻿#include "Header.cginc"
 
 TextureCube<float4> skyboxCube;
-SamplerState linearClamp;
+SamplerState sampler_LinearClamp;
 
 // Add Monte Carlo integration
 float3x3 GetTangentSpace(float3 normal)
@@ -62,18 +62,89 @@ float3 CosineSampleHemisphere(float3 normal)
     return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
 }
 
+// Samples uniformly from the hemisphere
+// alpha = 0 for uniform
+// alpha = 1 for cosine
+// alpha > 1 for higher Phong exponents
+float3 SampleHemisphere(float3 normal, float alpha)
+{
+    // Sample the hemisphere, where alpha determines the kind of the sampling
+    float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float phi = 2 * PI * rand();
+    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    // Transform direction to world space
+    return mul(tangentSpaceDir, GetTangentSpace(normal));
+}
+
+// Converts direction from carthesian coords to spherical coords
+float2 CarthesianToSpherical(float3 direction)
+{
+    float phi = atan2(direction.x, -direction.z) / -PI * 0.5f;
+    float theta = acos(direction.y) / -PI;
+    return float2(phi, theta);
+}
+
 // The energy function is a little helper that averages the color channels:
-float energy(float3 color)
+float Energy(float3 color)
 {
     return dot(color, 1.0f / 3.0f);
 }
 
 // 用在step 6
-float smoothness2PhongAlpha(float s)
+float SmoothnessToPhongAlpha(float s)
 {
     return pow(1000, s * s);
 }
 
+// Lighting Model 相关开始reflectedDir, outputDir, hit
+float3 ClassicLightingModel(float3 reflectedDir, float3 outputDir, RayHit hit)
+{
+    float3 finalColor;
+
+    float3 albedo = hit.albedo;
+    float3 normal = hit.normal;
+    float smoothness = hit.smoothness;
+    float metallic = hit.metallic;
+    float3 lightDir = outputDir;
+
+    float3 reflected = reflect(lightDir, normal);
+    float alpha = SmoothnessToPhongAlpha(smoothness);
+
+    float3 specularColor = lerp(albedo, albedo * 0.1f, metallic);
+    float3 diffuse = albedo;//2 * min(1.0f - specularColor, albedo);
+
+    // 公式参考 http://three-eyed-games.com/2018/05/12/gpu-path-tracing-in-unity-part-2/
+    float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflectedDir, lightDir)), alpha);
+    finalColor = (diffuse + specular) * saturate(dot(normal, lightDir));
+
+
+    return hit.albedo;
+}
+
+float3 PbrLightingModel(float3 lightDir, RayHit hit)
+{
+    //float NdotL = abs(dot(N, L));
+    //float NdotV = abs(dot(N, V));
+
+    //float NdotH = abs(dot(N, H));
+    //float VdotH = abs(dot(V, H));
+    //float LdotH = abs(dot(L, H));
+
+
+    //float NDF = DistributionGGX(N, H, hit.roughness);
+    //float G = GeometrySmith(N, V, L, hit.roughness);
+
+
+
+    //float3 specularBrdf = SpecularBRDF(NDF, G, F, V, L, N);
+
+
+    return 0;
+}
+// Lighting Model 相关结束
+
+float debugSmoothness;
 float3 Shade(inout Ray ray, RayHit hit)
 {
     if (hit.distance < 1.#INF)
@@ -83,7 +154,7 @@ float3 Shade(inout Ray ray, RayHit hit)
         //// step 1. 完全镜面反射，不考虑能量衰减
         //ray.origin = hit.position + hit.normal * 0.01f;
         //ray.direction = reflect(ray.direction, hit.normal);
-        ////return 0;// hit.normal * 0.5f + 0.5f;
+        //return 0;// hit.normal * 0.5f + 0.5f;
 
         //// step 2. 添加一个测试阴影
         //Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -directionalLight.xyz);
@@ -151,22 +222,25 @@ float3 Shade(inout Ray ray, RayHit hit)
         // pdf(x) = (ωi⋅n)/π = cosθsinθ/π, https://puluo.top/%E8%92%99%E7%89%B9%E5%8D%A1%E6%B4%9B%E7%A7%AF%E5%88%86%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E9%87%87%E6%A0%B7/
         // 这个就是最简单的 Importance Sampling： Cosine Sampling
         // L(x,ωo)=1/N * ∑kdL(x, ωi) 
-        float3 specularColor = lerp(hit.albedo, hit.albedo * 0.1f, hit.metallic);
-        float3 reflected = reflect(ray.direction, hit.normal);
-        float alpha = smoothness2PhongAlpha(hit.smoothness);
-        float3 diffuse = hit.albedo;//2 * min(1.0f - specularColor, hit.albedo);
-        float3 direction;
+//        float3 inputDir = ray.direction;
+//        float3 outputDir;
+//#ifdef COSINE_SAMPLE
+//        outputDir = CosineSampleHemisphere(hit.normal);
+//#else
+//        outputDir = UniformSampleHemisphere(hit.normal);
+//#endif
+//        ray.direction = outputDir;
 
-#ifdef COSINE_SAMPLE
-        direction = CosineSampleHemisphere(hit.normal);
-#else
-        direction = UniformSampleHemisphere(hit.normal);
-#endif
+        float3 reflectedDir = reflect(ray.direction, hit.normal);
 
-        ray.direction = direction;
+        float alpha = SmoothnessToPhongAlpha(hit.smoothness);
+        ray.direction = SampleHemisphere(hit.normal, alpha);
+        //ray.direction = lerp(reflectedDir, CosineSampleHemisphere(hit.normal), hit.smoothness);
 
-        float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflected, ray.direction)), alpha);
-        ray.energy *= (diffuse + specular) * saturate(dot(hit.normal, ray.direction));
+        float3 finalColor = 0;
+        finalColor = ClassicLightingModel(reflectedDir, ray.direction, hit);
+
+        ray.energy *= finalColor;
         
         // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
         return 0;
@@ -174,6 +248,6 @@ float3 Shade(inout Ray ray, RayHit hit)
     else
     {
         ray.energy = 0.0f;
-        return skyboxCube.SampleLevel(linearClamp, ray.direction, 0).xyz;
+        return skyboxCube.SampleLevel(sampler_LinearClamp, ray.direction, 0).xyz;
     }
 }

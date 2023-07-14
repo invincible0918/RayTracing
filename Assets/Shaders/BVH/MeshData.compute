@@ -52,14 +52,14 @@ uint MortonCode(float3 v)
 }
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
-//void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
-void Calculate(uint id : SV_DispatchThreadID)
+void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
+//void Calculate(uint id : SV_DispatchThreadID)
 {
-	//const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
+	const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
 	if (id >= trianglesCount)
 		return;
 
-	//AllMemoryBarrierWithGroupSync();
+	AllMemoryBarrierWithGroupSync();
     // 读取顶点索引
 	uint3 triIndex = indexBuffer.Load3(id * 3 * 4); // id * 3[triangle vertices] * 4[bytes]
 

@@ -35,6 +35,8 @@ public class RayTracingMaster : MonoBehaviour
     int debugFrameIndex;
     int debugSampleCount;
 
+    public float debugSmoothness;
+
     struct Sphere
     {
         public Vector3 center;
@@ -253,6 +255,10 @@ public class RayTracingMaster : MonoBehaviour
             cs.SetVector("directionalLight", new Vector4(dir.x, dir.y, dir.z, light.intensity * lightIntensityScale));
             cs.SetVector("directionalLightColor", light.color);
         }
+
+        // debug only
+        cs.SetFloat("debugSmoothness", debugSmoothness);
+
     }
 
     void InitSpheres()

@@ -17,11 +17,11 @@ public static class MeshData
     {
         int kernelCalculate = meshShader.FindKernel("Calculate");
 
-        //// Byte Address Buffer, ¶ÁĞ´µÄÊ±ºò£¬°ÑbufferÀïµÄÄÚÈİ£¨byte£©×öÆ«ÒÆ£¬¿ÉÓÃÓÚÑ°Ö·
-        //// ¶ÔÓ¦µÄÊÇHLSLµÄByteAddressBuffer£¬RWByteAddressBuffer
+        //// Byte Address Buffer, è¯»å†™çš„æ—¶å€™ï¼ŒæŠŠbufferé‡Œçš„å†…å®¹ï¼ˆbyteï¼‰åšåç§»ï¼Œå¯ç”¨äºå¯»å€
+        //// å¯¹åº”çš„æ˜¯HLSLçš„ByteAddressBufferï¼ŒRWByteAddressBuffer
         //// 4 (32-bit indices)
-        //// IndexFormat.UInt16: 2 byte, ·¶Î§ 0¡«65535 
-        //// IndexFormat.UInt32: 4 byte, ·¶Î§ 0¡«4294967295 
+        //// IndexFormat.UInt16: 2 byte, èŒƒå›´ 0ï½65535 
+        //// IndexFormat.UInt32: 4 byte, èŒƒå›´ 0ï½4294967295 
         //GraphicsBuffer indexBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Index | GraphicsBuffer.Target.Raw, triangles.Length, sizeof(int));
         //indexBuffer.SetData(triangles);
 
@@ -42,10 +42,11 @@ public static class MeshData
         meshShader.SetVector("encompassingAABBMin", bounds.min);
         meshShader.SetVector("encompassingAABBMax", bounds.max);
 
-        meshShader.Dispatch(kernelCalculate, (int)dataLength, 1, 1);
+        // ä¸å»ºè®®è¿™ä¸ªå†™æ³•ï¼Œå½“æ¨¡å‹é¢æ•°è¿‡å¤šçš„æ—¶å€™ï¼Œä¼šæŠ¥é”™ï¼šThread group count is above the maximum allowed limit. Maximum allowed thread group count is 65535
+        //meshShader.Dispatch(kernelCalculate, (int)dataLength, 1, 1);
 
-        // Ê¹ÓÃÒÔÏÂĞ´·¨ÔòºÍbvh½Å±¾ÖĞÒ»ÑùÁË£¬µ«ÊÇcompute shaderÖĞĞèÒªĞŞ¸Ä
-        //meshShader.Dispatch(kernelCalculate, Constants.BLOCK_SIZE, 1, 1);
+        // ä½¿ç”¨ä»¥ä¸‹å†™æ³•åˆ™å’Œbvhè„šæœ¬ä¸­ä¸€æ ·äº†ï¼Œä½†æ˜¯compute shaderä¸­éœ€è¦ä¿®æ”¹
+        meshShader.Dispatch(kernelCalculate, Constants.BLOCK_SIZE, 1, 1);
         //void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         //{
         //      //const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
