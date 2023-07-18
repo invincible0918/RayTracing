@@ -38,6 +38,10 @@ public class RayTracingMaster : MonoBehaviour
     public Color shadowColor;
     public float shadowIntensity = 1f;
 
+    // Post process
+    public PostProcess postProcess;
+    public bool enablePostProcess;
+    public RenderTexture postProcessRT;
 
     struct Sphere
     {
@@ -110,6 +114,9 @@ public class RayTracingMaster : MonoBehaviour
 
         if (convergedRT != null)
             convergedRT.Release();
+
+        if (postProcessRT != null)
+            postProcessRT.Release();
     }
 
     // Update is called once per frame
@@ -160,30 +167,29 @@ public class RayTracingMaster : MonoBehaviour
     void InitCamera()
     {
         cam = GetComponent<Camera>();
+        cam.allowHDR = true;
     }
 
     void InitRT()
     {
+        CreateRT(ref rt);
+        CreateRT(ref convergedRT);
+        CreateRT(ref postProcessRT);
+
+        // Reset sampling
+        currentSample = 0;
+    }
+
+    void CreateRT(ref RenderTexture rt)
+    {
         if (rt != null)
             rt.Release();
-
-        if (convergedRT != null)
-            convergedRT.Release();
 
         rt = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
         {
             enableRandomWrite = true
         };
         rt.Create();
-
-        convergedRT = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
-        {
-            enableRandomWrite = true
-        };
-        convergedRT.Create();
-
-        // Reset sampling
-        currentSample = 0;
     }
 
     void CustomRender(RenderTexture destination)
@@ -238,10 +244,19 @@ public class RayTracingMaster : MonoBehaviour
                 addMaterial = new Material(Shader.Find("MyCustom/AddShader"));
             addMaterial.SetFloat("_Sample", currentSample);
             Graphics.Blit(rt, convergedRT, addMaterial);
-            Graphics.Blit(convergedRT, destination);
+
+            if (enablePostProcess)
+            {
+                postProcess.Render(convergedRT, postProcessRT);
+                Graphics.Blit(postProcessRT, destination);
+            }
+            else
+                Graphics.Blit(convergedRT, destination);
+
             currentSample++;
         }
     }
+
 
     void UpdateParameters()
     {

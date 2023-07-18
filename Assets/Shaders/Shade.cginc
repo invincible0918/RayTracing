@@ -277,6 +277,9 @@ float3 PbrLightingModel(inout Ray ray, RayHit hit)
 {
     float3 finalColor = 1;
 
+    if (any(hit.emissionColor)) 
+        return 0;
+
     float transparent = hit.transparent;
 
     // BSDF = BRDF + BTDF
