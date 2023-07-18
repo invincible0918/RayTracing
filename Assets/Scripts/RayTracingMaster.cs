@@ -35,7 +35,9 @@ public class RayTracingMaster : MonoBehaviour
     int debugFrameIndex;
     int debugSampleCount;
 
-    public float debugSmoothness;
+    public Color shadowColor;
+    public float shadowIntensity = 1f;
+
 
     struct Sphere
     {
@@ -254,11 +256,8 @@ public class RayTracingMaster : MonoBehaviour
             Vector3 dir = light.transform.forward;
             cs.SetVector("directionalLight", new Vector4(dir.x, dir.y, dir.z, light.intensity * lightIntensityScale));
             cs.SetVector("directionalLightColor", light.color);
+            cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
         }
-
-        // debug only
-        cs.SetFloat("debugSmoothness", debugSmoothness);
-
     }
 
     void InitSpheres()
@@ -358,7 +357,7 @@ public class RayTracingMaster : MonoBehaviour
         // Sort by distance first
         foreach (MeshRenderer r in meshParent.GetComponentsInChildren<MeshRenderer>(false))
         {
-            if (!r.gameObject.activeInHierarchy)
+            if (!r.enabled || !r.gameObject.activeInHierarchy)
                 continue;
             float distance = Vector3.Distance(r.transform.position, cam.transform.position);
             di.Add(r, distance);

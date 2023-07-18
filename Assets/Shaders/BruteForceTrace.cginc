@@ -1,6 +1,4 @@
-﻿#include "Header.cginc"
-
-//// Sphere
+﻿//// Sphere
 //Sphere CreateSphere(float3 center, float radius)
 //{
 //    Sphere sphere;

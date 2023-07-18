@@ -3,7 +3,182 @@ guid: 07368aaba9c8a8e4f83865571933275d
 ModelImporter:
   serializedVersion: 21202
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Badges_High
+    second: {fileID: 2100000, guid: 976eb0a42d9b73d44a4f16742a473b42, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_BrakeDisc_High
+    second: {fileID: 2100000, guid: 327a94430c0e1de4ba03e06f020632be, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Caliper_High
+    second: {fileID: 2100000, guid: 15952471df2ae534ca22e0c3266110d9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Chassis_High
+    second: {fileID: 2100000, guid: b50b43e3e1ae16040971a941b7bce3bf, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_GlassColor_High
+    second: {fileID: 2100000, guid: eb10919c879f48c46bfffd2d55eb7ec7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_GlassLights_High
+    second: {fileID: 2100000, guid: 11c6c3e706c938541b8a8d4ce82ffaba, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_GlassSurround_High
+    second: {fileID: 2100000, guid: e245f1eed1c705940b3266cd59adcc2b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Glass_High
+    second: {fileID: 2100000, guid: b884728c77e97bc41b2fca1c3db7b175, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Glass_Mirror_High
+    second: {fileID: 2100000, guid: f45eeca624c7a1f4a83a20ab2cf13c3d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Grille_A_High
+    second: {fileID: 2100000, guid: 280e1dcc1a1651c4abd74b7a5f640e1b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Internal_Interior_High
+    second: {fileID: 2100000, guid: 1d556715f44d6624687c963bb5c0d642, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_LicensePlate_High
+    second: {fileID: 2100000, guid: bbb19b91007108f4a80844547ab74a01, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_LightCluster_High
+    second: {fileID: 2100000, guid: 68c5dfe886215d349a5d2204b3cb202a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_LightRefracted_High
+    second: {fileID: 2100000, guid: e5c21b26248962a468d82945227e248d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Chassis_Low
+    second: {fileID: 2100000, guid: dad585918aa04834a8b01da36d1359cd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Chrome_High
+    second: {fileID: 2100000, guid: 6d173cc2db760334db09242096bdcb71, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Chrome_Low
+    second: {fileID: 2100000, guid: 29be7729868498d489c658255caf3455, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_ExhaustGlow_High
+    second: {fileID: 2100000, guid: 2bff66b94bb0bf147810e2e0ab372327, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_ExhaustGlow_Low
+    second: {fileID: 2100000, guid: 700687d97c949b2449989054267e8486, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_GlassColor_Low
+    second: {fileID: 2100000, guid: 4d85e982be86fd04ab19448077d29c41, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Glass_Low
+    second: {fileID: 2100000, guid: 422fdd0d17f02b848b67bd97c3f372dc, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Glass_Mirror_Low
+    second: {fileID: 2100000, guid: 284d87493e217cd44a87c29824152ae6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Grille_A_Low
+    second: {fileID: 2100000, guid: e5cb00f68238ad042ad56404ef6c66b1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_LicensePlate_Low
+    second: {fileID: 2100000, guid: a07bc1dba9efa3240ada981ea55a6818, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_PlasticRough_High
+    second: {fileID: 2100000, guid: 1b470e4ca9278a94aa413bb02c17526d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_PlasticRough_Low
+    second: {fileID: 2100000, guid: e9cf4496b1a49d64796d93f5b926c676, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_PlasticSmooth_High
+    second: {fileID: 2100000, guid: d11cba8383cb512438bee3e4c5d65890, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_PlasticSmooth_Low
+    second: {fileID: 2100000, guid: 99291766c44e4ac4a944e90ed9e2edc4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Opaque_Tire_Low
+    second: {fileID: 2100000, guid: 8c37360f406638448b83d27f34a3c905, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Paint_Metal_High
+    second: {fileID: 2100000, guid: 7b7162e18c130ae48b5e23761d1428f4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Paint_Metal_Low
+    second: {fileID: 2100000, guid: 83715e3d86de6fa429fa2a6f5ce9c117, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Rim_High
+    second: {fileID: 2100000, guid: 502f54c6395477544a6b56125bdd68da, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Rim_Low
+    second: {fileID: 2100000, guid: 0f498d042d7d5574abfa092a9d5d29a9, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Car_AlfaRomeo_8C_2007_M_Tire_High
+    second: {fileID: 2100000, guid: 526ad83d5e058964dbbcede744d48858, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Default_Material
+    second: {fileID: 2100000, guid: be3f60df3ceaff745bf09d7b61134b27, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

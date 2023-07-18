@@ -1,4 +1,5 @@
-﻿#include "Header.cginc"
+﻿static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
+
 
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
@@ -77,20 +78,6 @@ float3 SampleHemisphere(float3 normal, float alpha)
     return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
-// Converts direction from carthesian coords to spherical coords
-float2 CarthesianToSpherical(float3 direction)
-{
-    float phi = atan2(direction.x, -direction.z) / -PI * 0.5f;
-    float theta = acos(direction.y) / -PI;
-    return float2(phi, theta);
-}
-
-// The energy function is a little helper that averages the color channels:
-float Energy(float3 color)
-{
-    return dot(color, 1.0f / 3.0f);
-}
-
 // 用在step 6
 float SmoothnessToPhongAlpha(float s)
 {
@@ -98,7 +85,7 @@ float SmoothnessToPhongAlpha(float s)
 }
 
 // Lighting Model 相关开始reflectedDir, outputDir, hit
-float3 ClassicLightingModel(float3 reflectedDir, float3 outputDir, RayHit hit)
+float3 ClassicLightingModel(inout Ray ray, RayHit hit)
 {
     float3 finalColor;
 
@@ -106,45 +93,207 @@ float3 ClassicLightingModel(float3 reflectedDir, float3 outputDir, RayHit hit)
     float3 normal = hit.normal;
     float smoothness = hit.smoothness;
     float metallic = hit.metallic;
-    float3 lightDir = outputDir;
-
-    float3 reflected = reflect(lightDir, normal);
-    float alpha = SmoothnessToPhongAlpha(smoothness);
 
     float3 specularColor = lerp(albedo, albedo * 0.1f, metallic);
-    float3 diffuse = albedo;//2 * min(1.0f - specularColor, albedo);
-
+    
     // 公式参考 http://three-eyed-games.com/2018/05/12/gpu-path-tracing-in-unity-part-2/
-    float3 specular = specularColor * (alpha + 2) * pow(saturate(dot(reflectedDir, lightDir)), alpha);
-    finalColor = (diffuse + specular) * saturate(dot(normal, lightDir));
+    
+    
+    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
+    
+    ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
+    float f = (alpha + 2) / (alpha + 1);
+    float specChance = dot(specularColor, 1.0f / 3.0f);
+    finalColor = (1.0f / specChance) * specularColor * saturate(dot(hit.normal, ray.direction) * f);
 
-
-    return hit.albedo;
+    return finalColor;
 }
 
-float3 PbrLightingModel(float3 lightDir, RayHit hit)
+float SmoothnessToPerceptualRoughness(float smoothness)
 {
-    //float NdotL = abs(dot(N, L));
-    //float NdotV = abs(dot(N, V));
+    return (1 - smoothness);
+}
 
-    //float NdotH = abs(dot(N, H));
-    //float VdotH = abs(dot(V, H));
-    //float LdotH = abs(dot(L, H));
-
-
-    //float NDF = DistributionGGX(N, H, hit.roughness);
-    //float G = GeometrySmith(N, V, L, hit.roughness);
+inline half Pow5 (half x)
+{
+    return x*x * x*x * x;
+}
 
 
+half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
+{
+    half fd90 = 0.5 + 2 * LdotH * LdotH * perceptualRoughness;
+    // Two schlick fresnel term
+    half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
+    half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
 
-    //float3 specularBrdf = SpecularBRDF(NDF, G, F, V, L, N);
+    return lightScatter * viewScatter;
+}
+float PerceptualRoughnessToRoughness(float perceptualRoughness)
+{
+    return perceptualRoughness * perceptualRoughness;
+}
+// Ref: http://jcgt.org/published/0003/02/03/paper.pdf
+inline half SmithJointGGXVisibilityTerm (half NdotL, half NdotV, half roughness)
+{
+    // Approximation of the above formulation (simplify the sqrt, not mathematically correct but close enough)
+    half a = roughness;
+    half lambdaV = NdotL * (NdotV * (1 - a) + a);
+    half lambdaL = NdotV * (NdotL * (1 - a) + a);
+
+    return 0.5f / (lambdaV + lambdaL + 1e-5f);
+}
+
+inline float GGXTerm (float NdotH, float roughness)
+{
+    float a2 = roughness * roughness;
+    float d = (NdotH * a2 - NdotH) * NdotH + 1.0f; // 2 mad
+    return INV_PI * a2 / (d * d + 1e-7f); // This function is not intended to be running on Mobile,
+                                            // therefore epsilon is smaller than what can be represented by half
+}
+
+inline half3 FresnelTerm (half3 F0, half cosA)
+{
+    half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
+    return F0 + (1-F0) * t;
+}
+
+inline half OneMinusReflectivityFromMetallic(half metallic)
+{
+    half oneMinusDielectricSpec = COLOR_SPACE_DIELECTRIC_SPEC.a;
+    return oneMinusDielectricSpec - metallic * oneMinusDielectricSpec;
+}
+
+inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
+{
+    half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
+    return lerp (F0, F90, t);
+}
+
+float3 Brdf(inout Ray ray, RayHit hit)
+{
+    float3 finalColor = 1;
+
+    ray.origin = hit.position + hit.normal * 0.001f;
+
+    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
+    ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
+    //ray.direction = ImportanceSampleGGX(float2(rand(), rand()), hit.normal, 0, 1 - hit.smoothness);
+
+    float3 camPos = mul(camera2World, float4(0, 0, 0, 1)).xyz;
+	float3 normal = hit.normal;
+	float3 posWorld = hit.position;
+    float smoothness = hit.smoothness;
+    float metallic = hit.metallic;
+
+	float3 lightDir = normalize(-directionalLight.xyz);
+	float3 viewDir = normalize(camPos - posWorld);
+	float3 lightColor = directionalLightColor.rgb;
+    float3 specColor = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, hit.albedo, metallic);
+    float oneMinusReflectivity = OneMinusReflectivityFromMetallic(metallic);
+    float perceptualRoughness = SmoothnessToPerceptualRoughness (smoothness);
+    float3 diffColor = hit.albedo * oneMinusReflectivity;
+
+    float3 halfDir = normalize (lightDir + viewDir);
 
 
-    return 0;
+    half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact
+    half nl = saturate(dot(normal, lightDir));
+    float nh = saturate(dot(normal, halfDir));
+
+    half lv = saturate(dot(lightDir, viewDir));
+    half lh = saturate(dot(lightDir, halfDir));
+
+    // Diffuse term
+    half diffuseTerm = DisneyDiffuse(nv, nl, lh, perceptualRoughness) * nl;
+
+    // Specular term
+    // HACK: theoretically we should divide diffuseTerm by Pi and not multiply specularTerm!
+    // BUT 1) that will make shader look significantly darker than Legacy ones
+    // and 2) on engine side "Non-important" lights have to be divided by Pi too in cases when they are injected into ambient SH
+    float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+    // GGX with roughtness to 0 would mean no specular at all, using max(roughness, 0.002) here to match HDrenderloop roughtness remapping.
+    roughness = max(roughness, 0.002);
+    half V = SmithJointGGXVisibilityTerm (nl, nv, roughness);
+    float D = GGXTerm (nh, roughness);
+
+    half specularTerm = V * D * PI; // Torrance-Sparrow model, Fresnel is applied later
+
+    // specularTerm * nl can be NaN on Metal in some cases, use max() to make sure it's a sane value
+    specularTerm = max(0, specularTerm * nl);
+
+    // surfaceReduction = Int D(NdotH) * NdotH * Id(NdotL>0) dH = 1/(roughness^2+1)
+    half surfaceReduction;
+
+    surfaceReduction = 1.0 / (roughness*roughness + 1.0);           // fade \in [0.5;1]
+
+    // To provide true Lambert lighting, we need to be able to kill specular completely.
+    specularTerm *= any(specColor) ? 1.0 : 0.0;
+
+    half grazingTerm = saturate(smoothness + (1-oneMinusReflectivity));
+    finalColor =  diffColor * (/*gi.diffuse + */lightColor * diffuseTerm)
+                    + specularTerm * lightColor * FresnelTerm (specColor, lh)
+                    + surfaceReduction * /*gi.specular * */FresnelLerp (specColor, grazingTerm, nv);
+
+    return finalColor;
+}
+
+
+float3 Btdf(inout Ray ray, RayHit hit)
+{
+    float3 finalColor = 1;
+
+    // 需要同时考虑反射和折射,https://zhuanlan.zhihu.com/p/58692781
+    float roulette = rand();
+
+    if (roulette <= hit.transparent)
+        finalColor = Brdf(ray, hit);
+    else
+    {
+        bool fromOutside = dot(ray.direction, hit.normal) < 0;
+        float3 N = fromOutside ? hit.normal : -hit.normal;
+        float3 bias = N * 0.001f;
+        ray.origin = hit.position - bias;
+
+        // refraction
+        //float etai = 1;
+        //float etat = 1.55;
+
+        //float eta = fromOutside ? etai / etat : etat / etai;
+
+        ////float3 V = normalize(-ray.direction);
+        ////float3 H = ImportanceSampleGGX(float2(rand(), rand()), N, V, 1 - hit.smoothness);
+        ////finalColor = dot(ray.direction, -H);
+        //ray.direction = normalize(refract(ray.direction, N, eta));
+
+        // penetration
+        // in this part the direction won't change
+    }
+
+    return finalColor;
+}
+
+float3 PbrLightingModel(inout Ray ray, RayHit hit)
+{
+    float3 finalColor = 1;
+
+    float transparent = hit.transparent;
+
+    // BSDF = BRDF + BTDF
+    if (transparent < 0)
+    {
+        // BRDF
+        finalColor = Brdf(ray, hit);
+    }
+    else
+    {
+        // BTDF
+        finalColor = Btdf(ray, hit);
+    }
+
+    return finalColor;
 }
 // Lighting Model 相关结束
-
-float debugSmoothness;
 float3 Shade(inout Ray ray, RayHit hit)
 {
     if (hit.distance < 1.#INF)
@@ -158,7 +307,7 @@ float3 Shade(inout Ray ray, RayHit hit)
 
         //// step 2. 添加一个测试阴影
         //Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -directionalLight.xyz);
-        //RayHit shadowHit = Trace(shadowRay);
+        //RayHit shadowHit = BVHTrace(shadowRay);
         //if (shadowHit.distance != 1.#INF)
         //{
         //    // 可以用enery来控制阴影的黑色
@@ -191,7 +340,7 @@ float3 Shade(inout Ray ray, RayHit hit)
         // step 5. 只考虑lambert模型的漫反射的BRDF，注意此时的lambert是遵循PBR的，并不是 n dot l这样的经验光照模型
         // fr(x,ωi,ωo)=kd/π, 推导见：https://zhuanlan.zhihu.com/p/29837458
         // L(x,ωo)=1/N * ∑2*kd* (ωi⋅n)L(x, ωi)
-        ray.origin = hit.position + hit.normal * 0.01f;
+        //ray.origin = hit.position + hit.normal * 0.001f;
         //ray.direction = SampleHemisphere(hit.normal);
         //ray.energy *= 2 * hit.albedo * saturate(dot(hit.normal, ray.direction));
 
@@ -231,19 +380,18 @@ float3 Shade(inout Ray ray, RayHit hit)
 //#endif
 //        ray.direction = outputDir;
 
-        float3 reflectedDir = reflect(ray.direction, hit.normal);
 
-        float alpha = SmoothnessToPhongAlpha(hit.smoothness);
-        ray.direction = SampleHemisphere(hit.normal, alpha);
         //ray.direction = lerp(reflectedDir, CosineSampleHemisphere(hit.normal), hit.smoothness);
 
         float3 finalColor = 0;
-        finalColor = ClassicLightingModel(reflectedDir, ray.direction, hit);
 
+        //finalColor = ClassicLightingModel(ray, hit);
+        finalColor = PbrLightingModel(ray, hit);
         ray.energy *= finalColor;
         
         // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
-        return 0;
+        // 渲染方程的泰勒展开 https://zhuanlan.zhihu.com/p/463166884
+        return hit.emissionColor;
     }
     else
     {

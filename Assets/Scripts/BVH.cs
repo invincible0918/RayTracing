@@ -49,6 +49,8 @@ public class BVH : MonoBehaviour
         public Vector3 albedo;
         public float metallic;
         public float smoothness;
+        public float transparent;
+        public Vector3 emissionColor;
     }
 
     public void Init(ComputeShader shader, int handle)
@@ -56,16 +58,16 @@ public class BVH : MonoBehaviour
         rayTracingShader = shader;
         kernelHandle = handle;
 
-        MeshRenderer[] mrs = (from mr in meshParent.GetComponentsInChildren<MeshRenderer>(false) where mr.gameObject.activeInHierarchy select mr).ToArray();
+        MeshRenderer[] mrs = (from mr in meshParent.GetComponentsInChildren<MeshRenderer>(false) where mr.enabled && mr.gameObject.activeInHierarchy select mr).ToArray();
 
         // 构造BVH的基本流程：1. 构造ZOrder Curve & Morton Code 2. 排序 3 构造子节点 4 构造内部节点 5 更新AABB
         // http://ma-yidong.com/2018/11/10/construct-bvh-with-unity-job-system/
 
         System.DateTime beforeDT = System.DateTime.Now;
 
-        // 1. 构造 AABB
-        InitMesh(mrs, out mesh, out List<uint> materialIndices, out List<Material> materials);
-        _container = new MeshBufferContainer(mesh, materialIndices, debugRef);
+        // 1. 构造 Mesh
+        InitMesh(mrs, out mesh, out List<uint> materialIndices, out List<Material> materials, out List<Vector2Int> shadowIndices);
+        _container = new MeshBufferContainer(mesh, materialIndices, shadowIndices, debugRef);
 
         // 2. 构造 AABB, Morton Code
         if (!debugRef)
@@ -77,8 +79,12 @@ public class BVH : MonoBehaviour
             _container.TriangleAABB,
             _container.TriangleData,
             _container.MaterialIndexBuffer,
+            _container.ShadowIndexBuffer,
             _container.Bounds,
             meshShader);
+
+        // 3. Hi-Z 遮挡剔除
+
 
         Debug.Log("Before BVH");
         //_container.GetAllGpuData();
@@ -137,7 +143,7 @@ public class BVH : MonoBehaviour
     }
 
     // 1. 构造 AABB
-    void InitMesh(MeshRenderer[] mrs, out Mesh mesh, out List<uint> materialIndices, out List<Material> materials)
+    void InitMesh(MeshRenderer[] mrs, out Mesh mesh, out List<uint> materialIndices, out List<Material> materials, out List<Vector2Int> shadowIndices)
     {
         List<int> indices = new List<int>();
         List<Vector3> vertices = new List<Vector3>();
@@ -148,6 +154,9 @@ public class BVH : MonoBehaviour
         // 处理材质
         materialIndices = new List<uint>();    // 这里存贮的是每一个三角面的材质id
         materials = new List<Material>();
+
+        // 处理阴影
+        shadowIndices = new List<Vector2Int>();   // 这里存贮的是每一个三角面的cast/receive shadow
 
         int indexOffset = 0;
         uint materialIndex = 0;
@@ -188,6 +197,10 @@ public class BVH : MonoBehaviour
                 materials.Add(mat);
                 materialIndex += 1;
             }
+
+            // 处理阴影
+            shadowIndices.AddRange(polygons.Select(i => new Vector2Int(mr.shadowCastingMode == ShadowCastingMode.On ? 1 : 0, 
+                                                                       mr.receiveShadows ? 1 : 0)));
 
             // index offsets
             indexOffset += m.vertices.Length;
@@ -246,10 +259,12 @@ public class BVH : MonoBehaviour
         {
             albedo = new Vector3(m.color.r, m.color.g, m.color.b),
             metallic = Mathf.Max(0.01f, m.GetFloat("_Metallic")),
-            smoothness = Mathf.Max(0.01f, m.GetFloat("_Glossiness"))
+            smoothness = Mathf.Max(0.01f, m.GetFloat("_Glossiness")),
+            transparent = (int)(m.GetFloat("_Mode")) == 3 ? m.color.a : -1,
+            emissionColor = m.IsKeywordEnabled("_EMISSION") ?  new Vector3(m.GetColor("_EmissionColor").r, m.GetColor("_EmissionColor").g, m.GetColor("_EmissionColor").b) : Vector3.zero
         }).ToList();
 
-        materialDataBuffer = new ComputeBuffer(materials.Count, sizeof(float) * 5);
+        materialDataBuffer = new ComputeBuffer(materials.Count, sizeof(float) * 9);
         materialDataBuffer.SetData(datas);
     }
 

@@ -12,6 +12,7 @@ public static class MeshData
         ComputeBuffer aabbBuffer,
         ComputeBuffer triangleDataBuffer,
         ComputeBuffer materialIndexBuffer,
+        ComputeBuffer shadowIndexBuffer,
         Bounds bounds,
         ComputeShader meshShader)
     {
@@ -34,6 +35,7 @@ public static class MeshData
         meshShader.SetBuffer(kernelCalculate, "indexBuffer", indexBuffer);
         meshShader.SetBuffer(kernelCalculate, "vertexBuffer", vertexBuffer);
         meshShader.SetBuffer(kernelCalculate, "materialIndexBuffer", materialIndexBuffer);
+        meshShader.SetBuffer(kernelCalculate, "shadowIndexBuffer", shadowIndexBuffer);
         meshShader.SetBuffer(kernelCalculate, "aabbBuffer", aabbBuffer);
         meshShader.SetBuffer(kernelCalculate, "triangleDataBuffer", triangleDataBuffer);
         meshShader.SetBuffer(kernelCalculate, "triangleIndexBuffer", triangleIndexBuffer);

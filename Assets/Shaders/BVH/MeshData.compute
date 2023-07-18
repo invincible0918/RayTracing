@@ -7,6 +7,7 @@
 ByteAddressBuffer indexBuffer;
 ByteAddressBuffer vertexBuffer;
 StructuredBuffer<uint> materialIndexBuffer;// 这里存贮的是每一个三角面的材质id
+StructuredBuffer<int2> shadowIndexBuffer;// 这里存贮的是每一个三角面的cast/receive shadow
 RWStructuredBuffer<AABB> aabbBuffer;
 RWStructuredBuffer<Triangle> triangleDataBuffer;
 RWStructuredBuffer<uint> triangleIndexBuffer;
@@ -104,6 +105,8 @@ void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 	tri.uv1 = uv1;
 	tri.uv2 = uv2;
 	tri.materialIndex = materialIndexBuffer[id] ;
+	tri.castShadow = shadowIndexBuffer[id][0];
+	tri.receiveShadow = shadowIndexBuffer[id][0];
 
 	triangleDataBuffer[id] = tri;
 

@@ -2,7 +2,11 @@
 #define _HEADER_
 
 static const float PI = 3.14159265f;
+static const float INV_PI = 0.31830988618f;
 static const float EPSILON = 1e-8;
+
+float4x4 camera2World;
+float4x4 cameraInverseProjection;
 
 // Camera
 struct Ray
@@ -23,6 +27,10 @@ struct RayHit
     float3 albedo;
     float metallic;
     float smoothness;
+    float transparent;
+    float3 emissionColor;
+    int castShadow;
+    int receiveShadow;
 };
 
 Ray CreateRay(float3 origin, float3 direction)
@@ -44,8 +52,16 @@ RayHit CreateRayHit()
     hit.albedo = 0.75;
     hit.metallic = 0;
     hit.smoothness = 0;
+    hit.transparent = -1;
+    hit.emissionColor = 0;
+    hit.castShadow = 1;
+    hit.receiveShadow = 1;
     return hit;
 }
+
+// Add directional light
+float4 directionalLight;
+float4 directionalLightColor;
 
 float2 _pixel;
 float seed;

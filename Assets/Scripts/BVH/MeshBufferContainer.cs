@@ -34,6 +34,7 @@ public class MeshBufferContainer : IDisposable
     public GraphicsBuffer IndexBuffer => _indexBuffer;
     public GraphicsBuffer VertexBuffer => _vertexBuffer;
     public ComputeBuffer MaterialIndexBuffer => _materialIndexBuffer.DeviceBuffer;
+    public ComputeBuffer ShadowIndexBuffer => _shadowIndexBuffer.DeviceBuffer;
 
     public Bounds Bounds => _bounds;
 
@@ -104,10 +105,11 @@ public class MeshBufferContainer : IDisposable
     private readonly GraphicsBuffer _indexBuffer;
     private readonly GraphicsBuffer _vertexBuffer;
     private readonly DataBuffer<uint> _materialIndexBuffer;
+    private readonly DataBuffer<Vector2Int> _shadowIndexBuffer;
 
     private readonly Bounds _bounds;
 
-    public MeshBufferContainer(Mesh mesh, List<uint> materialIndices, bool debugRef) // TODO multiple meshes
+    public MeshBufferContainer(Mesh mesh, List<uint> materialIndices, List<Vector2Int> shadowIndices, bool debugRef) // TODO multiple meshes
     {
         if (Marshal.SizeOf(typeof(Triangle)) != 192)
         {
@@ -143,6 +145,12 @@ public class MeshBufferContainer : IDisposable
         for (uint i = 0; i < materialIndices.Count; ++i)
             _materialIndexBuffer[i] = materialIndices[(int)i];
         _materialIndexBuffer.Sync();
+
+        // 这里存贮的是每一个三角面的阴影属性
+        _shadowIndexBuffer = new DataBuffer<Vector2Int>(Constants.DATA_ARRAY_COUNT, Vector2Int.one);
+        for (uint i = 0; i < shadowIndices.Count; ++i)
+            _shadowIndexBuffer[i] = shadowIndices[(int)i];
+        _shadowIndexBuffer.Sync();
 
         if (debugRef)
         {
@@ -211,6 +219,7 @@ public class MeshBufferContainer : IDisposable
         _bvhLeafNodesBuffer.GetData();
         _bvhInternalNodesBuffer.GetData();
         _materialIndexBuffer.GetData();
+        _shadowIndexBuffer.GetData();
 
         // debug
         //for (uint i = 0; i < _trianglesLength; i++)
@@ -237,9 +246,10 @@ public class MeshBufferContainer : IDisposable
         //Debug.Log("_bvhInternalNodesBuffer: " + _bvhInternalNodesBuffer);
         //Debug.Log("_bvhLeafNodesBuffer: " + _bvhLeafNodesBuffer);
         //Debug.Log("_bvhDataBuffer: " + _bvhDataBuffer);
-        Debug.Log("_triangleDataBuffer: " + _triangleDataBuffer);
+        //Debug.Log("_triangleDataBuffer: " + _triangleDataBuffer);
         //Debug.Log("_keysBuffer: " + _keysBuffer);
         //Debug.Log("_materialIndexBuffer: " + _materialIndexBuffer);
+        //Debug.Log("_shadowIndexBuffer: " + _shadowIndexBuffer);
     }
 
 
@@ -256,5 +266,6 @@ public class MeshBufferContainer : IDisposable
         _indexBuffer.Dispose();
         _vertexBuffer.Dispose();
         _materialIndexBuffer.Dispose();
+        _shadowIndexBuffer.Dispose();
     }
 }

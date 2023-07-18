@@ -70,5 +70,7 @@ struct Triangle
     float _dummy9;
 
     int materialIndex;
-    float3 _dummy10;
+    int castShadow;
+    int receiveShadow;
+    float _dummy10;
 };

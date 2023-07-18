@@ -1,11 +1,12 @@
-﻿#include "Header.cginc"
-#include "BVH/Constants.cginc"
+﻿#include "BVH/Constants.cginc"
 
 struct MaterialData
 {
     float3 albedo;
     float metallic;
     float smoothness;
+    float transparent;
+    float3 emissionColor;
 };
 
 StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
@@ -52,6 +53,10 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
                 hit.albedo = materialData.albedo;
                 hit.metallic = materialData.metallic;
                 hit.smoothness = materialData.smoothness;
+                hit.transparent = materialData.transparent;
+                hit.emissionColor = materialData.emissionColor;
+                hit.castShadow = tri.castShadow;
+                hit.receiveShadow = tri.receiveShadow;
             }
         }
     }
@@ -107,13 +112,12 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
     //const Triangle t = triangleData[result.triangleIndex];
     //const float2 uv = (1 - result.uv.x - result.uv.y) * t.a_uv + result.uv.x * t.b_uv + result.uv.y * t.c_uv;
     //const float3 normal = (1 - result.uv.x - result.uv.y) * t.a_normal + result.uv.x * t.b_normal + result.uv.y * t.c_normal;
-
 }
 
 RayHit BVHTrace(Ray ray)   
 {
     RayHit hit = CreateRayHit();
     IntersectTriangle(ray, hit);
-
+    
     return hit;
 }

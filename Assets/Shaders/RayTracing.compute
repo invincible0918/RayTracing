@@ -1,22 +1,19 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
+#include "Header.cginc"
 #include "BruteForceTrace.cginc"
 #include "BVHTrace.cginc"
 #include "Shade.cginc"
+#include "Shadow.cginc"
 
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> destination;
 
-float4x4 camera2World;
-float4x4 cameraInverseProjection;
-float4 pixelOffset;
 
-// Add directional light
-float4 directionalLight;
-float4 directionalLightColor;
+float4 pixelOffset;
 
 int width;
 int height;
@@ -68,19 +65,27 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     //destination[id.xy] = float4(col, 1);
     //return;
 
+
+    RayHit hit = BVHTrace(ray);
+    float3 shadow = Shadow(ray, hit);
+
     // Reflection
     float3 col = float3(0, 0, 0);
+
     for (int i = 0; i < 5; i++)
     {
-#ifdef BRUTE_FORCE
-        RayHit hit = BruteForceTrace(ray);
-#else
+//#ifdef BRUTE_FORCE
+//      RayHit hit = BruteForceTrace(ray);
+//#else
         RayHit hit = BVHTrace(ray);
-#endif
+//#endif
         // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
         col += ray.energy * Shade(ray, hit);
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;
     }
+
+    col *= shadow;
+
     destination[id.xy] = float4(col, 1);    
 }
