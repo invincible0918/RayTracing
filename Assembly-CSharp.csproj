@@ -70,24 +70,31 @@
     <Compile Include="Assets\Scripts\BVH\Constants.cs" />
     <Compile Include="Assets\Scripts\BVH\BVHConstructor.cs" />
     <Compile Include="Assets\Scripts\CarPreprocessing.cs" />
+    <Compile Include="Assets\Scripts\PostProcess.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\BVHTrace.cginc" />
+    <None Include="Assets\Shaders\PostProcess\PostDebug.shader" />
+    <None Include="Assets\Shaders\PostProcess\Post.shader" />
     <None Include="Assets\Shaders\BVH\MeshData.compute" />
     <None Include="Assets\Shaders\RayTracing.compute" />
     <None Include="Assets\Shaders\Shadow.cginc" />
     <None Include="Assets\Shaders\BVH\BVH.compute" />
     <None Include="Assets\Shaders\BruteForceTrace.cginc" />
+    <None Include="Assets\Shaders\PostProcessShader.shader" />
     <None Include="Assets\Shaders\Header.cginc" />
     <None Include="Assets\Free HDR Skyboxes Pack\ReadMe.txt" />
     <None Include="Assets\Shaders\BVH\Constants.cginc" />
+    <None Include="Assets\Shaders\PostProcess\UpSample.shader" />
     <None Include="Assets\Shaders\BVH\GlobalRadixSort.compute" />
     <None Include="Assets\Shaders\TestLowFilter.shader" />
     <None Include="Assets\Shaders\NormalTest.shader" />
     <None Include="Assets\Shaders\BVH\LocalRadixSort.compute" />
     <None Include="Assets\Shaders\Shade.cginc" />
+    <None Include="Assets\Shaders\PostProcess\downSample.shader" />
     <None Include="Assets\Shaders\AddShader.shader" />
     <None Include="Assets\Shaders\SampleHemisphere.compute" />
+    <None Include="Assets\Shaders\PostProcess\Threshold.shader" />
     <None Include="Assets\Shaders\BVH\Scan.compute" />
   </ItemGroup>
   <ItemGroup>
