@@ -42,55 +42,60 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     // transform pixel from (0, 1) to (-1, 1)
     //float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
 
+    float3 col = float3(0, 0, 0);
     // Anti-Aliasing
     // 射线地产生实际是用的每一片像素的中心位置，如果我们在每一个像素内做随机移动产生射线，是不是就能减少一些锯齿了呢
-    float2 uv = float2((id.xy + pixelOffset.xy) / float2(width, height)) * 2 - 1;
-
-    Ray ray = CreateCameraRay(uv);
-
-    // Test current ray direction
-    //destination[id.xy] = float4(ray.direction * 0.5 + 0.5, 1);
-
-    // Sample the skybox by spherical coordinate system https://juejin.cn/post/6844903880141045773
-    //float theta = acos(ray.direction.y) / -PI;
-    //float phi = atan2(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
-    //destination[id.xy] = SkyboxTex.SampleLevel(sampler_SkyboxTex, float2(phi, theta), 0);
-
-    // To debug skybox
-    //destination[id.xy] = SkyboxCube.SampleLevel(_LinearClamp, ray.direction, 0);
-
-    ////Trace and shade
-    //RayHit hit = Trace(ray);
-    //float3 col = Shade(ray, hit);
-    //destination[id.xy] = float4(col, 1);
-    //return;
-
-    // Reflection
-    float3 col = float3(0, 0, 0);
-
-    //for(int sampleCount = 0; sampleCount < 100; sampleCount++)
+    for(int sampleCount = 0; sampleCount < 20; sampleCount++)
     {
-        //float2 uv = float2((id.xy + pixelOffset.xy/* + float2(rand(sampleCount), rand(100 - sampleCount))*/) / float2(width, height)) * 2 - 1;
-        //Ray ray = CreateCameraRay(uv);
+        // offset range: (-1, 1)
+        float2 uvOffset = (float2(rand(sampleCount), rand(sampleCount * sampleCount)) + pixelOffset.xy) - 1;
+        float2 uv = float2((id.xy + uvOffset) / float2(width, height)) * 2 - 1;
 
-        for (int i = 0; i < 6; i++)
+        Ray ray = CreateCameraRay(uv);
+
+        // Test current ray direction
+        //destination[id.xy] = float4(ray.direction * 0.5 + 0.5, 1);
+
+        // Sample the skybox by spherical coordinate system https://juejin.cn/post/6844903880141045773
+        //float theta = acos(ray.direction.y) / -PI;
+        //float phi = atan2(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
+        //destination[id.xy] = SkyboxTex.SampleLevel(sampler_SkyboxTex, float2(phi, theta), 0);
+
+        // To debug skybox
+        //destination[id.xy] = SkyboxCube.SampleLevel(_LinearClamp, ray.direction, 0);
+
+        ////Trace and shade
+        //RayHit hit = Trace(ray);
+        //float3 col = Shade(ray, hit);
+        //destination[id.xy] = float4(col, 1);
+        //return;
+
+        // Reflection
+        //float3 col = float3(0, 0, 0);
+
         {
-    #ifdef BRUTE_FORCE
-            RayHit hit = BruteForceTrace(ray);
-    #else
-            RayHit hit = BVHTrace(ray);
-    #endif
-            // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
-            col += ray.energy * Shade(ray, hit);
-            if (!any(ray.energy))   // any(x): x!=0 return true
-                break;
+            //float2 uv = float2((id.xy + pixelOffset.xy/* + float2(rand(sampleCount), rand(100 - sampleCount))*/) / float2(width, height)) * 2 - 1;
+            //Ray ray = CreateCameraRay(uv);
+
+            for (int i = 0; i < 6; i++)
+            {
+        #ifdef BRUTE_FORCE
+                RayHit hit = BruteForceTrace(ray);
+        #else
+                RayHit hit = BVHTrace(ray);
+        #endif
+                // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
+                col += ray.energy * Shade(ray, hit);
+                if (!any(ray.energy))   // any(x): x!=0 return true
+                    break;
+            }
         }
     }
-
-    //col /= 100;
+    col /= 20;
 
 #ifndef BRUTE_FORCE
 // 使用带有强烈明暗对比的hdr之后，对于漫反射可以不用计算阴影，但是对于镜面反射还是要计算，这里需要展开
+    float2 uv = float2((id.xy + pixelOffset.xy) / float2(width, height)) * 2 - 1;
     Ray shadowRay = CreateCameraRay(uv);
     RayHit hit = BVHTrace(shadowRay);
     float3 shadow = Shadow(shadowRay, hit);
