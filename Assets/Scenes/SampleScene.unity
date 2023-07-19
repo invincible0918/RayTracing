@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 1.2348509, g: 1.1815536, b: 1.1300533, a: 1}
+  m_IndirectSpecularColor: {r: 1.4390721, g: 1.489203, b: 1.7857449, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -2278,14 +2278,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 705507993}
-  m_LocalRotation: {x: 0.33798566, y: -0.38395792, z: 0.8584989, w: 0.03635677}
+  m_LocalRotation: {x: 0.33525744, y: -0.9025158, z: 0.16553257, w: -0.21369745}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 43.144, y: 49.208, z: 195.674}
+  m_LocalEulerAnglesHint: {x: 8.946, y: 149.812, z: 316.826}
 --- !u!1 &759379379
 GameObject:
   m_ObjectHideFlags: 0
@@ -3247,6 +3247,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cs: {fileID: 7200000, guid: b38b17cf2bd8efa4295cd7107c5ae208, type: 3}
   skyboxCube: {fileID: 8900000, guid: 355acb988b191f14d8fa1eedafb0f714, type: 3}
+  skyboxMat: {fileID: 2100000, guid: c4e292e13973d58489584bf8f01d4d76, type: 2}
   rt: {fileID: 0}
   light: {fileID: 705507994}
   lightIntensityScale: 4
@@ -6403,7 +6404,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &2050718829
 Transform:
   m_ObjectHideFlags: 0
@@ -7282,7 +7283,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9131834901594727100, guid: 855be9fece34a54428c108b6ef38507f, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 855be9fece34a54428c108b6ef38507f, type: 3}

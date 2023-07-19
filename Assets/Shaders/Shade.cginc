@@ -1,8 +1,8 @@
 ﻿static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
 
-
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
+float skyboxRotation;
 
 // Add Monte Carlo integration
 float3x3 GetTangentSpace(float3 normal)
@@ -321,6 +321,16 @@ float3 PbrLightingModel(inout Ray ray, RayHit hit)
 
     return finalColor;
 }
+
+float3 RotateAroundYInDegrees(float3 dir, float degrees)
+{
+    float alpha = degrees * PI / 180.0;
+    float sina, cosa;
+    sincos(alpha, sina, cosa);
+    float2x2 m = float2x2(cosa, -sina, sina, cosa);
+    return float3(mul(m, dir.xz), dir.y).xzy;
+}
+
 // Lighting Model 相关结束
 float3 Shade(inout Ray ray, RayHit hit)
 {
@@ -424,6 +434,7 @@ float3 Shade(inout Ray ray, RayHit hit)
     else
     {
         ray.energy = 0.0f;
-        return skyboxCube.SampleLevel(sampler_LinearClamp, ray.direction, 0).xyz;
+        float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
+        return skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).xyz;
     }
 }

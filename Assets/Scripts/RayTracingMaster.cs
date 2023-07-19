@@ -8,6 +8,7 @@ public class RayTracingMaster : MonoBehaviour
 {
     public ComputeShader cs;
     public Cubemap skyboxCube;
+    public Material skyboxMat;
     public RenderTexture rt;
 
     public Light light;
@@ -42,6 +43,8 @@ public class RayTracingMaster : MonoBehaviour
     public PostProcess postProcess;
     public bool enablePostProcess;
     public RenderTexture postProcessRT;
+
+    bool isInitialized;
 
     struct Sphere
     {
@@ -94,6 +97,7 @@ public class RayTracingMaster : MonoBehaviour
     void Start()
     {
         InitCamera();
+        InitRT();
         InitShader();
 
         // chapter 3.1
@@ -105,6 +109,8 @@ public class RayTracingMaster : MonoBehaviour
         }
         else
             bvh.Init(cs, kernelHandle);
+
+        isInitialized = true;
     }
 
     private void OnDisable()
@@ -137,11 +143,7 @@ public class RayTracingMaster : MonoBehaviour
     void InitShader()
     {
         if (cs)
-        {
             kernelHandle = cs.FindKernel("CSMain");
-
-            cs.SetTexture(kernelHandle, "skyboxCube", skyboxCube);
-        }
 
         currentSample = 0;
 
@@ -152,6 +154,8 @@ public class RayTracingMaster : MonoBehaviour
 
         cs.SetInt("width", Screen.width);
         cs.SetInt("height", Screen.height);
+        cs.SetFloat("skyboxRotation", skyboxMat.GetFloat("_Rotation"));
+        cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
 
         //#if UNITY_EDITOR_OSX
         //        cs.SetInt("planeBufferSize", planes.Length);
@@ -194,15 +198,12 @@ public class RayTracingMaster : MonoBehaviour
 
     void CustomRender(RenderTexture destination)
     {
-        if (!cs)
+        if (!cs || !isActiveAndEnabled || !isInitialized)
             return;
 
         if (rt == null || convergedRT == null || rt.width != Screen.width || rt.height != Screen.height)
             InitRT();
 
-        // Update geometry in real time
-        //InitPlanes();
-        //InitSpheres();
         UpdateParameters();
 
         cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
@@ -233,6 +234,7 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetFloat("seed", Random.value);
 
         cs.Dispatch(kernelHandle, groupX, groupY, 1);
+
         //bvh.Update();
         if (!aliasing)
             Graphics.Blit(rt, destination);
@@ -257,6 +259,13 @@ public class RayTracingMaster : MonoBehaviour
         }
     }
 
+    void OnValidate()
+    {
+        if (!cs || !isActiveAndEnabled || !isInitialized)
+            return;
+
+        // 只有面板上的数值发生变化的时候，或者start的时候，才会调用
+    }
 
     void UpdateParameters()
     {
