@@ -81,7 +81,7 @@ float3 SampleHemisphere(float3 normal, float alpha)
 // 用在step 6
 float SmoothnessToPhongAlpha(float s)
 {
-    return pow(1000, s * s);
+    return pow(10000, s * s);
 }
 
 // Lighting Model 相关开始reflectedDir, outputDir, hit
@@ -170,6 +170,31 @@ inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
     return lerp (F0, F90, t);
 }
 
+float3 ImportanceSampleGGX(float2 Xi, float3 N, float3 V, float roughness)
+{
+    float a = roughness * roughness;
+
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    // from spherical coordinates to cartesian coordinates
+    float3 H;
+    H.x = cos(phi) * sinTheta;
+    H.y = sin(phi) * sinTheta;
+    H.z = cosTheta;
+
+    // from tangent-space vector to world-space sample vector
+    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent = normalize(cross(up, N));
+    float3 bitangent = cross(N, tangent);
+
+    float3 halfVec = tangent * H.x + bitangent * H.y + N * H.z;
+    halfVec = normalize(halfVec);
+    
+    return halfVec;
+}
+
 float3 Brdf(inout Ray ray, RayHit hit)
 {
     float3 finalColor = 1;
@@ -179,13 +204,13 @@ float3 Brdf(inout Ray ray, RayHit hit)
     float alpha = SmoothnessToPhongAlpha(hit.smoothness);
     ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
     //ray.direction = ImportanceSampleGGX(float2(rand(), rand()), hit.normal, 0, 1 - hit.smoothness);
-
     float3 camPos = mul(camera2World, float4(0, 0, 0, 1)).xyz;
 	float3 normal = hit.normal;
 	float3 posWorld = hit.position;
     float smoothness = hit.smoothness;
     float metallic = hit.metallic;
 
+	//float3 lightDir = normalize(ray.direction);
 	float3 lightDir = normalize(-directionalLight.xyz);
 	float3 viewDir = normalize(camPos - posWorld);
 	float3 lightColor = directionalLightColor.rgb;

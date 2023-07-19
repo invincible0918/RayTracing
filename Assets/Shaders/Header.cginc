@@ -74,6 +74,12 @@ float rand()
     return result;
 }
 
+float rand(float seed)
+{
+    float result = frac(sin(seed / 100.0f * dot(_pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
+    return result;
+}
+
 float2 hash2()
 {
     return frac(sin(_pixel) * float2(43758.5453123, 22578.1459123));

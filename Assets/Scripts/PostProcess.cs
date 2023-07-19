@@ -137,5 +137,7 @@ public class PostProcess : MonoBehaviour
         upSampleMat = new Material(Shader.Find("MyCustom/UpSample"));
         postMat = new Material(Shader.Find("MyCustom/Post"));
         postDebugMat = new Material(Shader.Find("MyCustom/PostDebug"));
+
+        Camera.main.allowHDR = true;
     }
 }

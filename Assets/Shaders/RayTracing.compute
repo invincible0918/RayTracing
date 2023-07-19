@@ -65,27 +65,37 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     //destination[id.xy] = float4(col, 1);
     //return;
 
-
-    RayHit hit = BVHTrace(ray);
-    float3 shadow = Shadow(ray, hit);
-
     // Reflection
     float3 col = float3(0, 0, 0);
 
-    for (int i = 0; i < 6; i++)
+    //for(int sampleCount = 0; sampleCount < 100; sampleCount++)
     {
-//#ifdef BRUTE_FORCE
-//      RayHit hit = BruteForceTrace(ray);
-//#else
-        RayHit hit = BVHTrace(ray);
-//#endif
-        // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
-        col += ray.energy * Shade(ray, hit);
-        if (!any(ray.energy))   // any(x): x!=0 return true
-            break;
+        //float2 uv = float2((id.xy + pixelOffset.xy/* + float2(rand(sampleCount), rand(100 - sampleCount))*/) / float2(width, height)) * 2 - 1;
+        //Ray ray = CreateCameraRay(uv);
+
+        for (int i = 0; i < 6; i++)
+        {
+    #ifdef BRUTE_FORCE
+            RayHit hit = BruteForceTrace(ray);
+    #else
+            RayHit hit = BVHTrace(ray);
+    #endif
+            // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
+            col += ray.energy * Shade(ray, hit);
+            if (!any(ray.energy))   // any(x): x!=0 return true
+                break;
+        }
     }
 
+    //col /= 100;
+
+#ifndef BRUTE_FORCE
+// 使用带有强烈明暗对比的hdr之后，对于漫反射可以不用计算阴影，但是对于镜面反射还是要计算，这里需要展开
+    Ray shadowRay = CreateCameraRay(uv);
+    RayHit hit = BVHTrace(shadowRay);
+    float3 shadow = Shadow(shadowRay, hit);
     col *= shadow;
+#endif
 
     destination[id.xy] = float4(col, 1);    
 }
