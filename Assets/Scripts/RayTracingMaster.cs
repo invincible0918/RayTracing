@@ -7,7 +7,6 @@ using UnityEngine;
 public class RayTracingMaster : MonoBehaviour
 {
     public ComputeShader cs;
-    public Cubemap skyboxCube;
     public Material skyboxMat;
     public RenderTexture rt;
 

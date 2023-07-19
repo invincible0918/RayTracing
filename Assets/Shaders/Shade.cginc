@@ -1,5 +1,5 @@
 ﻿static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
-
+static const float SPECCUBE_LOD_STEPS = 6;
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
@@ -63,10 +63,10 @@ float3 CosineSampleHemisphere(float3 normal)
     return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
 }
 
-// Samples uniformly from the hemisphere
-// alpha = 0 for uniform
-// alpha = 1 for cosine
-// alpha > 1 for higher Phong exponents
+ //Samples uniformly from the hemisphere
+ //alpha = 0 for uniform
+ //alpha = 1 for cosine
+ //alpha > 1 for higher Phong exponents
 float3 SampleHemisphere(float3 normal, float alpha)
 {
     // Sample the hemisphere, where alpha determines the kind of the sampling
@@ -170,31 +170,6 @@ inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
     return lerp (F0, F90, t);
 }
 
-float3 ImportanceSampleGGX(float2 Xi, float3 N, float3 V, float roughness)
-{
-    float a = roughness * roughness;
-
-    float phi = 2.0 * PI * Xi.x;
-    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-
-    // from spherical coordinates to cartesian coordinates
-    float3 H;
-    H.x = cos(phi) * sinTheta;
-    H.y = sin(phi) * sinTheta;
-    H.z = cosTheta;
-
-    // from tangent-space vector to world-space sample vector
-    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
-    float3 tangent = normalize(cross(up, N));
-    float3 bitangent = cross(N, tangent);
-
-    float3 halfVec = tangent * H.x + bitangent * H.y + N * H.z;
-    halfVec = normalize(halfVec);
-    
-    return halfVec;
-}
-
 float3 Brdf(inout Ray ray, RayHit hit)
 {
     float3 finalColor = 1;
@@ -210,7 +185,7 @@ float3 Brdf(inout Ray ray, RayHit hit)
     float smoothness = hit.smoothness;
     float metallic = hit.metallic;
 
-	//float3 lightDir = normalize(ray.direction);
+	// 使用场景内灯光方向计算效果更好，参考ppt, float3 lightDir = normalize(ray.direction);
 	float3 lightDir = normalize(-directionalLight.xyz);
 	float3 viewDir = normalize(camPos - posWorld);
 	float3 lightColor = directionalLightColor.rgb;
@@ -331,6 +306,11 @@ float3 RotateAroundYInDegrees(float3 dir, float degrees)
     return float3(mul(m, dir.xz), dir.y).xzy;
 }
 
+half PerceptualRoughnessToMipmapLevel(half perceptualRoughness)
+{
+    return perceptualRoughness * SPECCUBE_LOD_STEPS;
+}
+
 // Lighting Model 相关结束
 float3 Shade(inout Ray ray, RayHit hit)
 {
@@ -435,6 +415,9 @@ float3 Shade(inout Ray ray, RayHit hit)
     {
         ray.energy = 0.0f;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
-        return skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).xyz;
+
+        float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
+        half mip = PerceptualRoughnessToMipmapLevel(perceptualRoughness);
+        return skyboxCube.SampleLevel(sampler_LinearClamp, dir, mip).xyz;
     }
 }
