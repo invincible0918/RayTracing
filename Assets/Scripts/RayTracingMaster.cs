@@ -22,8 +22,9 @@ public class RayTracingMaster : MonoBehaviour
 
     // Add a new rt to Anti-Aliasing
     public RenderTexture convergedRT;
+    public uint currentSample = 0;
+
     Material addMaterial;
-    uint currentSample = 0;
 
     public bool isCosineSample;
     public bool isBruteForce;

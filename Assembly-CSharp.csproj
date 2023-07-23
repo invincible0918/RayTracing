@@ -74,6 +74,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\BVHTrace.cginc" />
+    <None Include="Assets\Shaders\Common.cginc" />
     <None Include="Assets\Shaders\PostProcess\PostDebug.shader" />
     <None Include="Assets\Shaders\PostProcess\Post.shader" />
     <None Include="Assets\Shaders\BVH\MeshData.compute" />
@@ -82,6 +83,8 @@
     <None Include="Assets\Shaders\BVH\BVH.compute" />
     <None Include="Assets\Shaders\BruteForceTrace.cginc" />
     <None Include="Assets\Shaders\PostProcessShader.shader" />
+    <None Include="Assets\Shaders\BTDFs.cginc" />
+    <None Include="Assets\Shaders\BRDFs.cginc" />
     <None Include="Assets\Shaders\Header.cginc" />
     <None Include="Assets\Free HDR Skyboxes Pack\ReadMe.txt" />
     <None Include="Assets\Shaders\BVH\Constants.cginc" />
