@@ -15,6 +15,7 @@ struct Sphere
     float3 albedo;
     float metallic;
     float smoothness;
+    float3 emissionColor;
 };
 
 // plane
@@ -118,6 +119,7 @@ void IntersectSphere(Ray ray, Sphere sphere, inout RayHit hit)
     hit.albedo = sphere.albedo;
     hit.metallic = sphere.metallic;
     hit.smoothness = sphere.smoothness;
+    hit.emissionColor = sphere.emissionColor;
 }
 
 void IntersectMesh(Ray ray, CMesh mesh, inout RayHit hit)

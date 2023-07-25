@@ -53,6 +53,7 @@ public class RayTracingMaster : MonoBehaviour
         public Vector3 albedo;
         public float metallic;
         public float smoothness;
+        public Vector3 emissionColor;
     };
 
     Sphere[] spheres;
@@ -305,6 +306,8 @@ public class RayTracingMaster : MonoBehaviour
             sphere.albedo = new Vector3(mat.color.r, mat.color.g, mat.color.b);
             sphere.metallic = Mathf.Max(0.01f, mat.GetFloat("_Metallic"));
             sphere.smoothness = Mathf.Max(0.01f, mat.GetFloat("_Glossiness"));
+            sphere.emissionColor = mat.IsKeywordEnabled("_EMISSION") ? new Vector3(mat.GetColor("_EmissionColor").r, mat.GetColor("_EmissionColor").g, mat.GetColor("_EmissionColor").b) : Vector3.zero;
+            
             spheres[i] = sphere;
         }
 
@@ -312,7 +315,7 @@ public class RayTracingMaster : MonoBehaviour
             spheres = new Sphere[1];
 
         if (sphereBuffer == null)
-            sphereBuffer = new ComputeBuffer(spheres.Length, sizeof(float) * 9);
+            sphereBuffer = new ComputeBuffer(spheres.Length, sizeof(float) * 12);
         sphereBuffer.SetData(spheres);
 
         cs.SetBuffer(kernelHandle, "sphereBuffer", sphereBuffer);
