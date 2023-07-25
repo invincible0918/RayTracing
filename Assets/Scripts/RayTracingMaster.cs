@@ -157,15 +157,8 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetFloat("skyboxRotation", skyboxMat.GetFloat("_Rotation"));
         cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
 
-        //#if UNITY_EDITOR_OSX
-        //        cs.SetInt("planeBufferSize", planes.Length);
-        //        cs.SetInt("sphereBufferSize", spheres.Length);
-        //        // chapter 3.1
-        //        cs.SetInt("meshBufferSize", cmeshes.Length);
-
-        //        cs.SetInt("destinationWidth", Screen.width);
-        //        cs.SetInt("destinationHeight", Screen.height);
-        //#endif
+        cs.SetInt("destinationWidth", Screen.width);
+        cs.SetInt("destinationHeight", Screen.height);
     }
 
     void InitCamera()
@@ -323,7 +316,7 @@ public class RayTracingMaster : MonoBehaviour
         sphereBuffer.SetData(spheres);
 
         cs.SetBuffer(kernelHandle, "sphereBuffer", sphereBuffer);
-
+        cs.SetInt("sphereCount", spheres.Length);
     }
 
     void InitPlanes()
@@ -369,6 +362,7 @@ public class RayTracingMaster : MonoBehaviour
         planeBuffer.SetData(planes);
 
         cs.SetBuffer(kernelHandle, "planeBuffer", planeBuffer);
+        cs.SetInt("planeCount", planes.Length);
     }
 
     // chapter 3.1
@@ -443,6 +437,7 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetBuffer(kernelHandle, "meshBuffer", meshBuffer);
         cs.SetBuffer(kernelHandle, "vertexBuffer", vertexBuffer);
         cs.SetBuffer(kernelHandle, "indexBuffer", indexBuffer);
+        cs.SetInt("meshCount", cmeshes.Length);
     }
 
     private void OnDestroy()

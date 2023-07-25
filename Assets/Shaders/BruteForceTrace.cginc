@@ -47,6 +47,10 @@ StructuredBuffer<CMesh> meshBuffer;
 StructuredBuffer<float3> vertexBuffer;
 StructuredBuffer<int> indexBuffer;
 
+const uniform int planeCount;
+const uniform int sphereCount;
+const uniform int meshCount;
+
 // Ground Plane
 void IntersectGroundPlane(Ray ray, inout RayHit hit)
 {
@@ -157,20 +161,14 @@ RayHit BruteForceTrace(Ray ray)
     //IntersectSphere(ray, sphere2, hit);
 
     // Trace Plane
-    uint count0, stride0;
-    planeBuffer.GetDimensions(count0, stride0);
-
-    for (uint i = 0; i < count0; ++i)
+    for (uint i = 0; i < planeCount; ++i)
     {
         Plane plane = planeBuffer[i];
         IntersectPlane(ray, plane, hit);
     }
 
     // Trace Sphere
-    uint count1, stride1;
-    sphereBuffer.GetDimensions(count1, stride1);
-
-    for (uint i = 0; i < count1; ++i)
+    for (uint i = 0; i < sphereCount; ++i)
     {
         Sphere sphere = sphereBuffer[i];
         IntersectSphere(ray, sphere, hit);
@@ -178,10 +176,7 @@ RayHit BruteForceTrace(Ray ray)
 
     // chapter 3.1
     // Trace mesh
-    uint count2, stride2;
-    meshBuffer.GetDimensions(count2, stride2);
-
-    for (uint i = 0; i < count2; ++i)
+    for (uint i = 0; i < meshCount; ++i)
     {
         CMesh cmesh = meshBuffer[i];
         IntersectMesh(ray, cmesh, hit);
