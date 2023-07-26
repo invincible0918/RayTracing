@@ -1,12 +1,11 @@
-﻿#include "Common.cginc"
-#include "BRDFs.cginc"
-#include "BTDFs.cginc"
-
-static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
+﻿static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
 static const float SPECCUBE_LOD_STEPS = 6;
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
+
+int lightCount;
+StructuredBuffer<float4> lightBuffer;
 
 // Add Monte Carlo integration
 float3x3 GetTangentSpace(float3 normal)
@@ -79,24 +78,41 @@ float3 CosineSampleHemisphere(float3 normal)
     //return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
 }
 
-// //Samples uniformly from the hemisphere
-// //alpha = 0 for uniform
-// //alpha = 1 for cosine
-// //alpha > 1 for higher Phong exponents
-//float3 SampleHemisphere(float3 normal, float alpha)
-//{
-//    // Sample the hemisphere, where alpha determines the kind of the sampling
-//    float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
-//    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
-//    float phi = 2 * PI * rand();
-//    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-//    // Transform direction to world space
-//    return mul(tangentSpaceDir, GetTangentSpace(normal));
-//}
+ //Samples uniformly from the hemisphere
+ //alpha = 0 for uniform
+ //alpha = 1 for cosine
+ //alpha > 1 for higher Phong exponents
+float3 SampleHemisphere(float3 normal, float alpha)
+{
+    // Sample the hemisphere, where alpha determines the kind of the sampling
+    float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float phi = 2 * PI * rand();
+    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    // Transform direction to world space
+    return mul(tangentSpaceDir, GetTangentSpace(normal));
+}
 
 void ImportanceSampling(inout Ray ray, RayHit hit)
 {
     ray.direction = reflect(ray.direction, hit.normal);
+}
+
+float3 ImportanceSampleLight(float4 light, float3 position)
+{
+    float3 lightPosition = light.xyz;
+    float lightRadius = light.w;
+    float maxCos = sqrt(1 - pow(lightRadius / length(lightPosition - position), 2));
+
+    float theta = acos(1 - rand() + rand() * maxCos);
+    //theta = 2 * PI * u.x;
+    float phi = 2.0 * PI * rand();
+
+    float3 normal = normalize(lightPosition - position);
+
+    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
+    // Transform direction to world space
+    return mul(localSpaceDir, GetTangentSpace(normal));
 }
 
 // 用在step 6
@@ -202,7 +218,7 @@ float3 Brdf(inout Ray ray, RayHit hit)
     //ray.direction = SampleHemisphere(hit.normal);
    
     //ray.direction = CosineSampleHemisphere(hit.normal);
-    //ray.direction = CosineSampleHemisphere(-directionalLight.xyz);
+    //ray.direction = CosineSampleHemisphere(-light.xyz);
     //ray.direction = CosineSampleHemisphere(hit.normal);
     //ray.direction = SampleHemisphere(hit.normal);
     //ImportanceSampling(ray, hit);
@@ -242,9 +258,8 @@ float3 Brdf(inout Ray ray, RayHit hit)
     float metallic = hit.metallic;
 
 	// 使用场景内灯光方向计算效果更好，参考ppt, float3 lightDir = normalize(ray.direction);
-	float3 lightDir = normalize(-directionalLight.xyz);
+	float3 lightDir = normalize(-light.xyz);
 	float3 viewDir = normalize(camPos - posWorld);
-	float3 lightColor = directionalLightColor.rgb;
     float3 specColor = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, hit.albedo, metallic);
     float oneMinusReflectivity = OneMinusReflectivityFromMetallic(metallic);
     float perceptualRoughness = SmoothnessToPerceptualRoughness (smoothness);
@@ -290,24 +305,6 @@ float3 Brdf(inout Ray ray, RayHit hit)
     finalColor =  diffColor * (/*gi.diffuse + */lightColor * diffuseTerm)
                     + specularTerm * lightColor * FresnelTerm (specColor, lh)
                     + surfaceReduction * /*gi.specular * */FresnelLerp (specColor, grazingTerm, nv);
-
-    
-    float totalPdf = 1;
-
-    if (roulette < hit.smoothness)
-    {
-        // Specular reflection
-        float NDF = DistributionGGX(hit.normal, halfDir, roughness);
-        half vh = saturate(dot(viewDir, halfDir));
-        float speccualrPdf = ImportanceSampleGGX_PDF(NDF, nh, vh);
-
-        totalPdf = speccualrPdf;
-    }
-    else
-    {
-        // Diffuse reflection
-        totalPdf = nl / PI;
-    }
 
     return finalColor;
 }
@@ -398,7 +395,7 @@ float3 Shade(inout Ray ray, RayHit hit)
         //return 0;// hit.normal * 0.5f + 0.5f;
 
         //// step 2. 添加一个测试阴影
-        //Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -directionalLight.xyz);
+        //Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -light.xyz);
         //RayHit shadowHit = BVHTrace(shadowRay);
         //if (shadowHit.distance != 1.#INF)
         //{
@@ -433,9 +430,7 @@ float3 Shade(inout Ray ray, RayHit hit)
         // fr(x,ωi,ωo)=kd/π, 推导见：https://zhuanlan.zhihu.com/p/29837458
         // L(x,ωo)=1/N * ∑2*kd* (ωi⋅n)L(x, ωi)
         //ray.origin = hit.position + hit.normal * 0.001f;
-        //ray.direction = 
-        
-        SampleHemisphere(hit.normal);
+        //ray.direction = SampleHemisphere(hit.normal);
         //ray.energy *= 2 * hit.albedo * saturate(dot(hit.normal, ray.direction));
 
         
@@ -480,7 +475,17 @@ float3 Shade(inout Ray ray, RayHit hit)
         float3 finalColor = 0;
 
         //finalColor = ClassicLightingModel(ray, hit);
-        finalColor = PbrLightingModel(ray, hit);
+        //finalColor = PbrLightingModel(ray, hit);
+        ray.origin = hit.position + hit.normal * 0.001f;
+        float4 importanceLight = lightBuffer[rand() * lightCount];
+        float3 dir = ImportanceSampleLight(importanceLight, ray.origin);
+        ray.direction = dir;
+        //if (dot(dir, hit.normal) > 0)
+        //    ray.direction = dir;
+        //else
+        //   ray.direction = CosineSampleHemisphere(hit.normal);
+
+        finalColor = hit.albedo * saturate(dot(ray.direction, hit.normal));
         ray.energy *= finalColor;
         
         // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
@@ -490,6 +495,7 @@ float3 Shade(inout Ray ray, RayHit hit)
     else
     {
         ray.energy = 0.0f;
+        return 0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
         float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
@@ -497,202 +503,3 @@ float3 Shade(inout Ray ray, RayHit hit)
         return skyboxCube.SampleLevel(sampler_LinearClamp, dir, mip).xyz;
     }
 }
-
-float3 Shade2(inout Ray ray, RayHit hit)
-{
-    if (hit.distance < 1.#INF)
-    {
-
-        float roulette = rand();
-        float blender = rand();//used to blend BSDF and BRDF
-        
-        if (blender < 1 - hit.transparent)
-        {
-            float3 reflectionDir;
-            
-            float diffuseRatio = 0.5 * (1.0 - hit.metallic);
-            float specularRoatio = 1 - diffuseRatio;
-            float3 V = normalize(-ray.direction);
-            
-            if (roulette < diffuseRatio)
-            { //sample diffuse
-            
-            //cosin sample
-                reflectionDir = SampleHemisphere(hit.normal, 1.0f);
-            }
-            else
-            { //sample specular
-            
-            
-            //hemisphere sampling
-            //reflectionDir = SampleHemisphere(hit.normal, 0.0f);
-
-            //ImportanceSampleGGX
-                float3 halfVec = ImportanceSampleGGX(float2(rand(), rand()), hit.normal, V, 1-hit.smoothness);
-                //isosceles
-                reflectionDir = 2.0 * dot(V, halfVec) * halfVec - V;
-                reflectionDir = normalize(reflectionDir);
-            }
-        
-
-            
-            float3 L = normalize(reflectionDir);
-            float3 H = normalize(V + L);
-        
-            float NdotL = abs(dot(hit.normal, L));
-            float NdotH = abs(dot(hit.normal, H));
-            float VdotH = abs(dot(V, H));
-            
-            float NdotV = abs(dot(hit.normal, V));
-            
-            float3 F0 = float3(0.08, 0.08, 0.08);
-            F0 = lerp(F0 * hit.albedo, hit.albedo, hit.metallic);
-        
-            float NDF = DistributionGGX(hit.normal, H, 1-hit.smoothness);
-            float G = GeometrySmith(hit.normal, V, L, 1-hit.smoothness);
-            float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-        
-            float3 kS = F;
-            float3 kD = 1.0 - kS;
-            kD *= 1.0 - hit.metallic;
-        
-            float3 specularBrdf = SpecularBRDF(NDF, G, F, V, L, hit.normal);
-        
-        //hemisphere sampling pdf
-        //pdf = 1 / (2 * PI)
-        //float speccualrPdf = 1 / (2 * PI);
-        
-        //ImportanceSampleGGX pdf
-        //pdf = D * NoH / (4 * VoH)
-            float speccualrPdf = ImportanceSampleGGX_PDF(NDF, NdotH, VdotH);
-        
-
-        
-        //diffuse
-        //Lambert diffuse = diffuse / PI
-            float3 diffuseBrdf = DiffuseBRDF(hit.albedo);
-        //cosin sample pdf = N dot L / PI
-            float diffusePdf = CosinSamplingPDF(NdotL);
-
-            float3 totalBrdf = (diffuseBrdf * kD + specularBrdf) * NdotL;
-            float totalPdf = diffuseRatio * diffusePdf + specularRoatio * speccualrPdf;
-
-            float3 toLight = normalize(directionalLight.xyz - hit.position);
-            float lightPdf = dot(directionalLight.xyz, hit.position) / (frac(toLight.y) * 10);
-            totalPdf = totalPdf * 0.5 + lightPdf * 0.5;
-                
-            ray.origin = hit.position + hit.normal * 0.001f;
-            ray.direction = reflectionDir;
-            if (totalPdf > 0.0)
-            {
-                ray.energy *= totalBrdf / totalPdf;
-            }
-        }
-        else
-        {
-            bool fromOutside = dot(ray.direction, hit.normal) < 0;
-            float3 N = fromOutside ? hit.normal : -hit.normal;
-            float3 bias = N * 0.001f;
-            
-            float etai = 1;
-            float etat = 1.55;
-            
-            float3 V = normalize(-ray.direction);
-            float3 H = ImportanceSampleGGX(float2(rand(), rand()), N, V, 1-hit.smoothness);
-            
-            
-            float3 F0 = float3(0.08, 0.08, 0.08);
-            F0 = F0 * hit.albedo;
-            float3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-            
-            
-            float kr = Calculatefresnel(ray.direction, hit.normal, 1.55);
-            
-            float specularRoatio = kr;
-            float refractionRatio = 1 - kr;
-            
-            float3 L;
-            
-            if (roulette <= specularRoatio)
-            {
-                ray.origin = hit.position + bias;
-                L = reflect(ray.direction, H);
-                ray.direction = L;
-            }
-            else
-            {
-                float eta = fromOutside ? etai / etat : etat / etai;
-                L = normalize(refract(ray.direction, H, eta));
-                ray.origin = hit.position - bias;
-                ray.direction = L;
-                //L = N;
-                if (!fromOutside)
-                {
-                        //since the BTDF is not reciprocal, we need to invert the direction of our vectors.
-                    float3 temp = L;
-                    L = V;
-                    V = temp;
-                        
-                    N = -N;
-                    H = -H;
-                }
-            }
-            
-            float NdotL = abs(dot(N, L));
-            float NdotV = abs(dot(N, V));
-            
-            float NdotH = abs(dot(N, H));
-            float VdotH = abs(dot(V, H));
-            float LdotH = abs(dot(L, H));
-            
-            
-            float NDF = DistributionGGX(N, H, 1-hit.smoothness);
-            float G = GeometrySmith(N, V, L, 1-hit.smoothness);
-            
-             //specualr
-   
-            float3 specularBrdf = SpecularBRDF(NDF, G, F, V, L, N);
-            
-            //ImportanceSampleGGX pdf
-            //pdf = D * NoH / (4 * VoH)
-            float speccualrPdf = ImportanceSampleGGX_PDF(NDF, NdotH, VdotH);
-            
-            //refraction
-            float etaOut = etat;
-            float etaIn = etai;
-            
-            float3 refractionBtdf = RefractionBTDF(NDF, G, F, V, L, N, H, etaIn, etaOut);
-            float refractionPdf = ImportanceSampleGGX_PDF(NDF, NdotH, VdotH);
-            
-            //BSDF = BRDF + BTDF
-            float3 totalBrdf = (specularBrdf + refractionBtdf * hit.albedo) * NdotL;
-            float totalPdf = specularRoatio * speccualrPdf + refractionRatio * refractionPdf;
-            if (totalPdf > 0.0)
-            {
-                ray.energy *= totalBrdf / totalPdf;
-            }
-        }
-      
-        
-        return hit.emissionColor;
-    }
-    else
-    {
-        //// Erase the ray's energy - the sky doesn't reflect anything
-        //ray.energy = 0.0f;
-
-        //// Sample the skybox and write it
-        //float theta = acos(ray.direction.y) / -PI;
-        //float phi = atan2(ray.direction.x, -ray.direction.z) / -PI * 0.5f;
-        //return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz;
-
-
-        ray.energy = 0.0f;
-        float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
-
-        float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
-        half mip = PerceptualRoughnessToMipmapLevel(perceptualRoughness);
-        return skyboxCube.SampleLevel(sampler_LinearClamp, dir, mip).xyz;
-    }
-}
-

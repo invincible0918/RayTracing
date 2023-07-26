@@ -140,6 +140,6 @@ float3 SoftShadow(float3 origin, float3 lightDir)
 
 float3 Shadow(Ray ray, RayHit hit)
 {
-    float3 softShadow = SoftShadow(hit.position + hit.normal * 0.01f, -directionalLight.xyz);
+    float3 softShadow = SoftShadow(hit.position + hit.normal * 0.01f, -light.xyz);
     return softShadow;
 }

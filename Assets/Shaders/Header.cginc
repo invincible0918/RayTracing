@@ -59,9 +59,12 @@ RayHit CreateRayHit()
     return hit;
 }
 
-// Add directional light
-float4 directionalLight;
-float4 directionalLightColor;
+// Sky Light
+float4 light;
+// Sphere Light and Aera Light
+float4 lightPosition;
+
+float4 lightColor;
 
 float2 _pixel;
 float seed;

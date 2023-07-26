@@ -4,15 +4,40 @@ using UnityEngine;
 
 public class SampleHemisphere : MonoBehaviour
 {
+    public enum SampleType
+    {
+        Semi,
+        Uniform,
+        CosWeighted,
+        Light,
+        BRDF,
+        MultipleImportance,
+    }
+    public SampleType sampleType;
+
     public ComputeShader cs;
+    public Shader particleShader;
     public int count = 100;
-    public float radius = 10f;
-    public bool isCosineSample;
+    public GameObject arrow;
+
+    #region Light
+    public enum LightType
+    {
+        SkyLight,
+        SphereLight,
+        AeraLight
+    }
+    public LightType lightType = LightType.SphereLight;
+    public float sphereLightRadius;
+
+    public GameObject sphereLight;
+    public GameObject areaLight;
+    #endregion
 
     ComputeBuffer cb;
     Vector3[] directions;
-    float[] seeds;
 
+    Material material;
 
     // http://corysimon.github.io/articles/uniformdistn-on-sphere/
     // Start is called before the first frame update
@@ -21,13 +46,11 @@ public class SampleHemisphere : MonoBehaviour
         cb = new ComputeBuffer(count, sizeof(float) * 3);
         directions = new Vector3[count];
         cs.SetBuffer(0, "directions", cb);
-        cs.SetBool("isCosineSample", isCosineSample);
         cs.SetFloat("seed", Random.value);
-        //seeds = new float[count];
-        //for (int i = 0; i < directions.Length; ++i)
-        //{
-        //    seeds[i] = Random.value;
-        //}
+        material = new Material(particleShader);
+        material.SetBuffer("cb", cb);
+
+        sphereLightRadius = sphereLight.GetComponent<SphereCollider>().radius * sphereLight.transform.localScale.x;
     }
 
     private void Update()
@@ -36,25 +59,25 @@ public class SampleHemisphere : MonoBehaviour
 
         int groupX = Mathf.CeilToInt((float)count / x);
 
-        cs.SetBool("isCosineSample", isCosineSample);
+        cs.SetInt("sampleType", (int)sampleType);
+        cs.SetVector("normal", arrow.transform.up);
+        // light start
+        cs.SetVector("sphereLight", new Vector4(sphereLight.transform.position.x,
+            sphereLight.transform.position.y,
+            sphereLight.transform.position.z,
+            sphereLightRadius));
+        // light end
+
         cs.Dispatch(0, groupX, 1, 1);
         cb.GetData(directions);
     }
 
-
-    private void OnDrawGizmos()
+    void OnRenderObject()
     {
-        Gizmos.DrawWireSphere(Vector3.zero, radius);
-        if (directions != null)
-        {
-            for (int i = 0; i < directions.Length; ++i)
-            {
-                Gizmos.color = Color.gray;
-                //Gizmos.DrawLine(Vector3.zero, directions[i] * radius);
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(directions[i] * radius, 0.05f);
-            }
-        }
+        material.SetPass(0);
+        Graphics.DrawProceduralNow(MeshTopology.Points, 1, count);
+        material.SetPass(1);
+        Graphics.DrawProceduralNow(MeshTopology.Points, 1, count);
     }
 
     private void OnDestroy()

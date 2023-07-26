@@ -150,7 +150,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 39299385}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -3.98, y: 0.771, z: -1.61}
+  m_LocalPosition: {x: -3.09, y: 0.771, z: -0.89}
   m_LocalScale: {x: 1.4821873, y: 1.4821873, z: 1.4821873}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3225,14 +3225,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: -0.2172522, y: -0.0018565005, z: 0.00045983965, w: -0.9761137}
-  m_LocalPosition: {x: 0.4, y: 2.162621, z: -3.5860043}
+  m_LocalRotation: {x: -0.14318904, y: -0.021186672, z: 0.0031204915, w: -0.9894636}
+  m_LocalPosition: {x: -2, y: 2.19, z: -5.88}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 34.576, y: 8.356, z: 0.002}
+  m_LocalEulerAnglesHint: {x: 16.469, y: 2.452, z: -0.006}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3248,7 +3248,10 @@ MonoBehaviour:
   cs: {fileID: 7200000, guid: b38b17cf2bd8efa4295cd7107c5ae208, type: 3}
   skyboxMat: {fileID: 2100000, guid: c4e292e13973d58489584bf8f01d4d76, type: 2}
   rt: {fileID: 0}
-  light: {fileID: 705507994}
+  lightType: 1
+  sphereLight: {fileID: 1415485151}
+  areaLight: {fileID: 0}
+  skyLight: {fileID: 705507994}
   lightIntensityScale: 4
   sphereParent: {fileID: 1873840421}
   planeParent: {fileID: 939405130}
@@ -4517,8 +4520,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1415485150}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -2.67, y: 0.366, z: -1.12}
-  m_LocalScale: {x: 0.6818, y: 0.6818, z: 0.6818}
+  m_LocalPosition: {x: -1.15, y: 0.28, z: -1.61}
+  m_LocalScale: {x: 0.1, y: 0.1, z: 0.1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2050718829}

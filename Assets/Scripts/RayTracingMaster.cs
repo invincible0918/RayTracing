@@ -10,8 +10,22 @@ public class RayTracingMaster : MonoBehaviour
     public Material skyboxMat;
     public RenderTexture rt;
 
-    public Light light;
+    public enum LightType
+    {
+        SkyLight,
+        AeraLight
+    }
+
+    public LightType lightType = LightType.SkyLight;
+    public Transform[] sphereLights;
+    public Transform[] areaLights;
+    ComputeBuffer lightBuffer;
+
+
+    public Light skyLight;
     public float lightIntensityScale = 2;
+
+    float lightRadius = 0.05f;
 
     public Transform sphereParent;
     public Transform planeParent;
@@ -26,7 +40,6 @@ public class RayTracingMaster : MonoBehaviour
 
     Material addMaterial;
 
-    public bool isCosineSample;
     public bool isBruteForce;
 
     int kernelHandle;
@@ -100,6 +113,7 @@ public class RayTracingMaster : MonoBehaviour
         InitCamera();
         InitRT();
         InitShader();
+        InitLight();
 
         // chapter 3.1
         if (isBruteForce)
@@ -178,6 +192,40 @@ public class RayTracingMaster : MonoBehaviour
         currentSample = 0;
     }
 
+    void InitLight()
+    {
+        List<Vector4> lightList = new List<Vector4>();
+
+        switch (lightType)
+        {
+            case LightType.SkyLight:
+                Vector3 dir = skyLight.transform.forward;
+                cs.SetVector("light", new Vector4(dir.x, dir.y, dir.z, skyLight.intensity * lightIntensityScale));
+                cs.SetVector("lightColor", skyLight.color);
+                cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
+                break;
+            case LightType.AeraLight:
+                lightList.AddRange(from light in sphereLights 
+                                   where light.gameObject.activeInHierarchy
+                                   select new Vector4(light.transform.position.x,
+                                   light.transform.position.y,
+                                   light.GetComponent<SphereCollider>().radius * light.transform.localScale.x));
+                lightList.AddRange(from light in areaLights
+                                   where light.gameObject.activeInHierarchy
+                                   select new Vector4(light.transform.position.x,
+                                   light.transform.position.y,
+                                   light.transform.position.z,
+                                   light.transform.localScale.x));
+                break;
+        }
+
+        lightBuffer = new ComputeBuffer(lightList.Count, sizeof(float) * 4);
+        lightBuffer.SetData(lightList);
+
+        cs.SetInt("lightCount", lightList.Count);
+        cs.SetBuffer(kernelHandle, "lightBuffer", lightBuffer);
+    }
+
     void CreateRT(ref RenderTexture rt)
     {
         if (rt != null)
@@ -215,11 +263,6 @@ public class RayTracingMaster : MonoBehaviour
         //}
 
         // 2nd step, utilze add shader
-        if (isCosineSample)
-            cs.EnableKeyword("COSINE_SAMPLE");
-        else
-            cs.DisableKeyword("COSINE_SAMPLE");
-
         if (isBruteForce)
             cs.EnableKeyword("BRUTE_FORCE");
         else
@@ -268,14 +311,6 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetMatrix("camera2World", cam.cameraToWorldMatrix);
         cs.SetMatrix("cameraInverseProjection", cam.projectionMatrix.inverse);
         cs.SetVector("pixelOffset", new Vector4(Random.value, Random.value, 0, 0));
-
-        if (light)
-        {
-            Vector3 dir = light.transform.forward;
-            cs.SetVector("directionalLight", new Vector4(dir.x, dir.y, dir.z, light.intensity * lightIntensityScale));
-            cs.SetVector("directionalLightColor", light.color);
-            cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
-        }
     }
 
     void InitSpheres()
@@ -452,5 +487,7 @@ public class RayTracingMaster : MonoBehaviour
         meshBuffer?.Release();
         vertexBuffer?.Release();
         indexBuffer?.Release();
+
+        lightBuffer?.Release();
     }
 }

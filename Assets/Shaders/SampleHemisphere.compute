@@ -7,9 +7,14 @@ RWStructuredBuffer<float3> directions;
 
 float2 _pixel;
 float seed;
-bool isCosineSample;
+int sampleType;
+float3 normal;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
+
+// light start
+float4 sphereLight;
+// light end
 
 // range: 0~1
 float rand()
@@ -23,7 +28,6 @@ float2 hash2()
 {
     return frac(sin(_pixel) * float2(43758.5453123, 22578.1459123));
 }
-
 
 // Add Monte Carlo integration
 float3x3 GetTangentSpace(float3 normal)
@@ -92,17 +96,40 @@ float3 CosineSampleHemisphere(float3 normal)
     return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
 }
 
+float3 LightSampleHemisphere(float4 sphereLight, float3 position, float3 normal)
+{
+    float3 lightPosition = sphereLight.xyz;
+    float lightRadius = sphereLight.w;
+    float maxCos = sqrt(1 - pow(lightRadius / length(lightPosition - position), 2));
+
+    float2 u = float2(rand(), rand());
+
+    float theta = acos(1 - maxCos * (u.x - 1));
+    float phi = 2.0 * PI * u.y;
+
+
+    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
+    // Transform direction to world space
+    return mul(localSpaceDir, GetTangentSpace(normal));
+}
+
+
 [numthreads(32, 1, 1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     _pixel = id.xy;
-    //_pixel = id.x + id.y * 3.43121412313;
 
     float3 direction;
-    if (isCosineSample)
-        direction = CosineSampleHemisphere(float3(0, 1, 0)); 
+    if (sampleType == 0)
+        direction = SampleHemisphere(normal);
+    else if (sampleType == 1)
+        direction = UniformSampleHemisphere(normal);
+    else if (sampleType == 2)
+        direction = CosineSampleHemisphere(normal); 
+    //else if (sampleType == 2)
+    //    direction = LightSampleHemisphere(sphereLight, normal); 
     else
-        direction = UniformSampleHemisphere(float3(0, 1, 0));
+        direction = float3(normal);
 
     directions[id.x] = direction;
 }
