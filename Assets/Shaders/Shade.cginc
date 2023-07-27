@@ -6,12 +6,6 @@ TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
 
-// 用在step 6
-float SmoothnessToPhongAlpha(float s)
-{
-    return pow(10000, s * s);
-}
-
 // Lighting Model 相关开始reflectedDir, outputDir, hit
 float3 ClassicLightingModel(RayHit hit, inout Ray ray)
 {
@@ -363,7 +357,7 @@ float3 Shade(RayHit hit, inout Ray ray)
     }
     else
     {
-        ray.energy = 1.0f;
+        ray.energy = 0.0f;
         return 0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 

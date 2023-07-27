@@ -1,5 +1,4 @@
 ﻿
-
 float3x3 GetTangentSpace(float3 normal)
 {
     // Choose a helper vector for the cross product
@@ -12,33 +11,28 @@ float3x3 GetTangentSpace(float3 normal)
     return float3x3(tangent, binormal, normal);
 }
 
-float3 UniformSampleHemisphere(float3 normal)
+float3 Tangent2World(float theta, float phi, float3 direction)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
-
-    float r = sqrt(1 - u.x * u.x);
-    float phi = 2.0 * PI * u.y;
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
+    float3 localSpaceDir = float3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
+    // Transform direction to world space
+    return mul(localSpaceDir, GetTangentSpace(direction));
 }
 
-float3 CosineSampleHemisphere(float3 normal)
+float3 UniformSampling(float3 normal)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
+    float theta = 0.5 * PI * rand();
+    float phi = 2.0 * PI * rand();
 
-    float r = sqrt(u.x);
-    float theta = 2.0 * PI * u.y;
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
+    return Tangent2World(theta, phi, normal);
 }
+
+float3 CosineSampling(float3 normal)
+{
+    //float theta = acos(sqrt(1 - rand()));
+    float theta = sqrt(rand());
+    float phi = 2.0 * PI * rand();
+
+    return Tangent2World(theta, phi, normal);}
 
 // Add Monte Carlo integration
  //Samples uniformly from the hemisphere
@@ -56,12 +50,6 @@ float3 SampleHemisphere(float3 normal, float alpha)
     return mul(tangentSpaceDir, GetTangentSpace(normal));
 }
 
-float3 Tangent2World(float theta, float phi, float3 direction)
-{
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(direction));
-}
 
 ////////////////////////////
 // Importance sampling Light
@@ -96,64 +84,44 @@ float PerceptualRoughnessToRoughness(float perceptualRoughness)
     return perceptualRoughness * perceptualRoughness;
 }
 
-float3 ImportanceSamplingBRDF(float4 light, float3 direction, RayHit hit)
+float SmoothnessToPhongAlpha(float s)
+{
+  return pow(10000.0f, s);
+}
+
+
+float3 ImportanceSamplingBRDF(float3 direction, RayHit hit)
 {
     // 和Unity一样，采样GGX法线分布
-    float smoothness = hit.smoothness;
-    float perceptualRoughness = SmoothnessToPerceptualRoughness(smoothness);
-    float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
-    float alpha = roughness;
+    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
 
-    // 使用场景内灯光方向计算效果更好，参考ppt
-    //float3 lightDir = normalize(ray.direction);
-    float3 lightPosition = light.xyz;
-    float3 lightDir = normalize(lightPosition - hit.position);
-    float3 camPos = mul(camera2World, float4(0, 0, 0, 1)).xyz;
-    float3 viewDir = normalize(-direction);// normalize(camPos - hit.position);
-    float3 halfDir = normalize(lightDir + viewDir);
-
-    float nh = saturate(dot(hit.normal, halfDir));
-    float alpha2 = alpha * alpha;
-    float a = alpha2 - 1;
-    
-    float e = alpha2 / (nh * nh * a * a + a) - 1 / a;
-
-    float theta = acos(sqrt((1 - rand()) / (rand() * a + 1))); //acos(sqrt((1 - e) / (e * a + 1)));
+    float theta = acos(pow(sqrt(rand()), 1 / (alpha+1)));
     float phi = 2.0 * PI * rand();
 
-    //float3 halfVec = Tangent2World(theta, phi, hit.normal);
-    //return 2.0 * dot(viewDir, halfVec) * halfVec - viewDir;
+    float3 normal = reflect(direction, hit.normal);;
 
-    float Phi = 2 * PI * rand();
-    float CosTheta = sqrt((1 - rand()) / (1 + (roughness * roughness - 1) * rand()));
-    float SinTheta = sqrt(1 - CosTheta * CosTheta);
-
-    float3 H;
-    H.x = SinTheta * cos(Phi);
-    H.y = SinTheta * sin(Phi);
-    H.z = CosTheta;
-
-
-    float3  B = normalize(cross(hit.normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, hit.normal);
-
-    float r = sqrt(rand());
-
-    float3 halfVec = normalize(r * SinTheta * B + sqrt(1.0 - rand()) * H + r * CosTheta * T);
-    return 2.0 * dot(viewDir, halfVec) * halfVec - viewDir;
+    return Tangent2World(theta, phi, normal);
 }
 
 void ImportanceSampling(RayHit hit, inout Ray ray)
 {
-    ray.origin = hit.position + hit.normal * 0.001f;
     float4 importanceLight = lightBuffer[rand() * lightCount];
-    //float3 dir = ImportanceSamplingLight(importanceLight, ray.origin);
-    //ray.direction = dir;
 
-    //if (dot(dir, hit.normal) > 0)
-    //    ray.direction = dir;
+    ray.origin = hit.position + hit.normal * 0.001f;
+    //ray.direction = UniformSampling(hit.normal);
+    //ray.direction = CosineSampling(hit.normal);
+
+    float3 samplingLightDir = ImportanceSamplingLight(importanceLight, ray.origin);
+
+    //if (0.5 > rand() && dot(samplingLightDir, hit.normal) > 0)
+    //{
+        ray.direction = samplingLightDir;
+    //}
     //else
-    //    ray.direction = CosineSampleHemisphere(hit.normal);
-    ray.direction = ImportanceSamplingBRDF(importanceLight, ray.direction, hit);
-    //ray.direction = CosineSampleHemisphere(hit.normal);
+    //{
+    //    if (hit.smoothness > rand())
+    //        ray.direction = ImportanceSamplingBRDF(ray.direction, hit);
+    //    else
+    //        ray.direction = CosineSampling(hit.normal);
+    //}
 }
