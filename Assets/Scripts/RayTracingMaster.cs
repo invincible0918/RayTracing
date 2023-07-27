@@ -219,6 +219,9 @@ public class RayTracingMaster : MonoBehaviour
                 break;
         }
 
+        if (lightList.Count == 0)
+            lightList.Add(Vector4.zero);
+
         lightBuffer = new ComputeBuffer(lightList.Count, sizeof(float) * 4);
         lightBuffer.SetData(lightList);
 

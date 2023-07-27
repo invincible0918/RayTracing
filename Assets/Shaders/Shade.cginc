@@ -1,119 +1,10 @@
-﻿static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
+﻿#include "ImportanceSampling.cginc"
+
+static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
 static const float SPECCUBE_LOD_STEPS = 6;
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
-
-int lightCount;
-StructuredBuffer<float4> lightBuffer;
-
-// Add Monte Carlo integration
-float3x3 GetTangentSpace(float3 normal)
-{
-    // Choose a helper vector for the cross product
-    float3 helper = float3(1, 0, 0);
-    if (abs(normal.x) > 0.99f)
-        helper = float3(0, 0, 1);
-    // Generate vectors
-    float3 tangent = normalize(cross(normal, helper));
-    float3 binormal = normalize(cross(normal, tangent));
-    return float3x3(tangent, binormal, normal);
-}
-
-// https://zhuanlan.zhihu.com/p/437461225
-float3 SampleHemisphere(float3 normal)
-{
-    //// Uniformly sample hemisphere direction
-    float theta = 2 * PI * rand();
-    float phi = 0.5 * PI * rand(); // semi-sphere
-
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(normal));
-
-    //// Uniformly sample hemisphere direction
-    //float cosTheta = rand();
-    //float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-    //float phi = 2 * PI * rand();
-    //float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    //// Transform direction to world space
-    //return mul(tangentSpaceDir, GetTangentSpace(normal));
-}
-
-float3 UniformSampleHemisphere(float3 normal)
-{
-    float2 u = float2(rand(), rand());
-
-    float r = sqrt(1 - u.x * u.x);
-    float phi = 2.0 * PI * u.y;
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
-}
-
-float3 CosineSampleHemisphere(float3 normal)
-{
-    float2 u = float2(rand(), rand());
-
-    float x = cos(2.0 * PI * u.y) * sqrt(u.x);
-    float z = sin(2.0 * PI * u.y) * sqrt(u.x);
-    float y = sqrt(1 - u.x);
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(x * B + y * normal + z * T);
-
-
-    //float2 u = float2(rand(), rand());
-
-    //float r = sqrt(u.x);
-    //float theta = 2.0 * PI * u.y;
-
-    //float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    //float3  T = cross(B, normal);
-
-    //return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
-}
-
- //Samples uniformly from the hemisphere
- //alpha = 0 for uniform
- //alpha = 1 for cosine
- //alpha > 1 for higher Phong exponents
-float3 SampleHemisphere(float3 normal, float alpha)
-{
-    // Sample the hemisphere, where alpha determines the kind of the sampling
-    float cosTheta = pow(rand(), 1.0f / (alpha + 1.0f));
-    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
-    float phi = 2 * PI * rand();
-    float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    // Transform direction to world space
-    return mul(tangentSpaceDir, GetTangentSpace(normal));
-}
-
-void ImportanceSampling(inout Ray ray, RayHit hit)
-{
-    ray.direction = reflect(ray.direction, hit.normal);
-}
-
-float3 ImportanceSampleLight(float4 light, float3 position)
-{
-    float3 lightPosition = light.xyz;
-    float lightRadius = light.w;
-    float maxCos = sqrt(1 - pow(lightRadius / length(lightPosition - position), 2));
-
-    float theta = acos(1 - rand() + rand() * maxCos);
-    //theta = 2 * PI * u.x;
-    float phi = 2.0 * PI * rand();
-
-    float3 normal = normalize(lightPosition - position);
-
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(normal));
-}
 
 // 用在step 6
 float SmoothnessToPhongAlpha(float s)
@@ -122,7 +13,7 @@ float SmoothnessToPhongAlpha(float s)
 }
 
 // Lighting Model 相关开始reflectedDir, outputDir, hit
-float3 ClassicLightingModel(inout Ray ray, RayHit hit)
+float3 ClassicLightingModel(RayHit hit, inout Ray ray)
 {
     float3 finalColor;
 
@@ -146,10 +37,6 @@ float3 ClassicLightingModel(inout Ray ray, RayHit hit)
     return finalColor;
 }
 
-float SmoothnessToPerceptualRoughness(float smoothness)
-{
-    return (1 - smoothness);
-}
 
 inline half Pow5 (half x)
 {
@@ -166,10 +53,7 @@ half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
 
     return lightScatter * viewScatter;
 }
-float PerceptualRoughnessToRoughness(float perceptualRoughness)
-{
-    return perceptualRoughness * perceptualRoughness;
-}
+
 // Ref: http://jcgt.org/published/0003/02/03/paper.pdf
 inline half SmithJointGGXVisibilityTerm (half NdotL, half NdotV, half roughness)
 {
@@ -207,30 +91,36 @@ inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
     return lerp (F0, F90, t);
 }
 
-float3 Brdf(inout Ray ray, RayHit hit)
+float3 Brdf(RayHit hit, inout Ray ray)
 {
     float3 finalColor = 1;
 
     ray.origin = hit.position + hit.normal * 0.001f;
 
-    //float alpha = SmoothnessToPhongAlpha(hit.smoothness);
-    //ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), 0);
-    //ray.direction = SampleHemisphere(hit.normal);
-   
-    //ray.direction = CosineSampleHemisphere(hit.normal);
-    //ray.direction = CosineSampleHemisphere(-light.xyz);
-    //ray.direction = CosineSampleHemisphere(hit.normal);
-    //ray.direction = SampleHemisphere(hit.normal);
-    //ImportanceSampling(ray, hit);
-    
-    float pdf = 1;
-    float roulette = rand();
-    //float a = SmoothnessToPerceptualRoughness (hit.smoothness);
-    //float b = PerceptualRoughnessToRoughness(a);
-    //if (roulette > b)
+    ImportanceSampling(hit, ray);
+
+    return hit.albedo* saturate(dot(hit.normal, ray.direction));
+
+    //float pdf = 1;
+    //float roulette = rand();
+    ////float a = SmoothnessToPerceptualRoughness (hit.smoothness);
+    ////float b = PerceptualRoughnessToRoughness(a);
+    ////if (roulette > b)
+    ////{
+    ////    // Specular reflection
+    ////    float alpha = SmoothnessToPhongAlpha(1 - b);
+    ////    ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
+    ////}
+    ////else
+    ////{
+    ////    // Diffuse reflection
+    ////    ray.direction = SampleHemisphere(hit.normal, 1.0f);
+    ////}
+
+    //if (roulette < hit.smoothness)
     //{
     //    // Specular reflection
-    //    float alpha = SmoothnessToPhongAlpha(1 - b);
+    //    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
     //    ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
     //}
     //else
@@ -238,18 +128,6 @@ float3 Brdf(inout Ray ray, RayHit hit)
     //    // Diffuse reflection
     //    ray.direction = SampleHemisphere(hit.normal, 1.0f);
     //}
-
-    if (roulette < hit.smoothness)
-    {
-        // Specular reflection
-        float alpha = SmoothnessToPhongAlpha(hit.smoothness);
-        ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
-    }
-    else
-    {
-        // Diffuse reflection
-        ray.direction = SampleHemisphere(hit.normal, 1.0f);
-    }
 
     float3 camPos = mul(camera2World, float4(0, 0, 0, 1)).xyz;
 	float3 normal = hit.normal;
@@ -310,7 +188,7 @@ float3 Brdf(inout Ray ray, RayHit hit)
 }
 
 
-float3 Btdf(inout Ray ray, RayHit hit)
+float3 Btdf(RayHit hit, inout Ray ray)
 {
     float3 finalColor = 1;
 
@@ -318,7 +196,7 @@ float3 Btdf(inout Ray ray, RayHit hit)
     float roulette = rand();
 
     if (roulette <= hit.transparent)
-        finalColor = Brdf(ray, hit);
+        finalColor = Brdf(hit, ray);
     else
     {
         bool fromOutside = dot(ray.direction, hit.normal) < 0;
@@ -344,7 +222,7 @@ float3 Btdf(inout Ray ray, RayHit hit)
     return finalColor;
 }
 
-float3 PbrLightingModel(inout Ray ray, RayHit hit)
+float3 PbrLightingModel(RayHit hit, inout Ray ray)
 {
     float3 finalColor = 1;
 
@@ -357,12 +235,12 @@ float3 PbrLightingModel(inout Ray ray, RayHit hit)
     if (transparent < 0)
     {
         // BRDF
-        finalColor = Brdf(ray, hit);
+        finalColor = Brdf(hit, ray);
     }
     else
     {
         // BTDF
-        finalColor = Btdf(ray, hit);
+        finalColor = Btdf(hit, ray);
     }
 
     return finalColor;
@@ -383,7 +261,7 @@ half PerceptualRoughnessToMipmapLevel(half perceptualRoughness)
 }
 
 // Lighting Model 相关结束
-float3 Shade(inout Ray ray, RayHit hit)
+float3 Shade(RayHit hit, inout Ray ray)
 {
     if (hit.distance < 1.#INF)
     {   
@@ -474,18 +352,9 @@ float3 Shade(inout Ray ray, RayHit hit)
 
         float3 finalColor = 0;
 
-        //finalColor = ClassicLightingModel(ray, hit);
-        //finalColor = PbrLightingModel(ray, hit);
-        ray.origin = hit.position + hit.normal * 0.001f;
-        float4 importanceLight = lightBuffer[rand() * lightCount];
-        float3 dir = ImportanceSampleLight(importanceLight, ray.origin);
-        ray.direction = dir;
-        //if (dot(dir, hit.normal) > 0)
-        //    ray.direction = dir;
-        //else
-        //   ray.direction = CosineSampleHemisphere(hit.normal);
+        //finalColor = ClassicLightingModel(hit, ray);
+        finalColor = PbrLightingModel(hit, ray);
 
-        finalColor = hit.albedo * saturate(dot(ray.direction, hit.normal));
         ray.energy *= finalColor;
         
         // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
@@ -494,7 +363,7 @@ float3 Shade(inout Ray ray, RayHit hit)
     }
     else
     {
-        ray.energy = 0.0f;
+        ray.energy = 1.0f;
         return 0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 

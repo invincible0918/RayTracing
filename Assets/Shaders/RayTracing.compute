@@ -74,7 +74,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         RayHit hit = BVHTrace(ray);
 #endif
         // https://blog.selfshadow.com/publications/s2015-shading-course/#course_content
-        col += ray.energy * Shade(ray, hit);
+        col += ray.energy * Shade(hit, ray);
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;
     }
