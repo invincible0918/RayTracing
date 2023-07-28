@@ -54,33 +54,18 @@ float3 SampleHemisphere(float3 normal, float alpha)
 ////////////////////////////
 // Importance sampling Light
 ////////////////////////////
+#pragma multi_compile __ SPHERE_LIGHT
+#pragma multi_compile __ AREA_LIGHT
+#pragma multi_compile __ DISC_LIGHT
+
+#ifdef SPHERE_LIGHT
 struct SphereLight
 {
     float3 position;
     float radius;
 };
-
-struct AreaLight
-{
-    float3 position;
-    float3 normal;
-    float3 up;
-    float2 size;
-};
-
-struct DiscLight
-{
-    float3 position;
-    float3 normal;
-    float radius;
-};
-
 int sphereLightCount;
-int areaLightCount;
-int discLightCount;
 StructuredBuffer<SphereLight> sphereLightBuffer;
-StructuredBuffer<AreaLight> areaLightBuffer;
-StructuredBuffer<DiscLight> discLightBuffer;
 
 float3 ImportanceSamplingSphereLight(SphereLight light, float3 position)
 {
@@ -94,6 +79,18 @@ float3 ImportanceSamplingSphereLight(SphereLight light, float3 position)
     // Transform direction to world space
     return Tangent2World(theta, phi, direction);
 }
+#endif
+
+#ifdef AREA_LIGHT
+struct AreaLight
+{
+    float3 position;
+    float3 normal;
+    float3 up;
+    float2 size;
+};
+int areaLightCount;
+StructuredBuffer<AreaLight> areaLightBuffer;
 
 float3 ImportanceSamplingAreaLight(AreaLight light, float3 position)
 {
@@ -110,6 +107,17 @@ float3 ImportanceSamplingAreaLight(AreaLight light, float3 position)
     float3 direction = normalize(pointWS - position);
     return pointWS/20;
 }
+#endif
+
+#ifdef DISC_LIGHT
+struct DiscLight
+{
+    float3 position;
+    float3 normal;
+    float radius;
+};
+int discLightCount;
+StructuredBuffer<DiscLight> discLightBuffer;
 
 float3 ImportanceSamplingDiscLight(DiscLight light, float3 position)
 {
@@ -120,22 +128,24 @@ float3 ImportanceSamplingDiscLight(DiscLight light, float3 position)
     // Transform direction to world space
     return Tangent2World(theta, phi, direction);
 }
+#endif
+
 
 float3 ImportanceSamplingLight(float3 position)
 {
+#if (defined (SPHERE_LIGHT)) && (defined (AREA_LIGHT))
     float roulette = rand();
-
-    if (sphereLightCount > 0 && areaLightCount > 0)
-    {
-        if (roulette > 0.5)
-            return ImportanceSamplingSphereLight(sphereLightBuffer[rand() * sphereLightCount], position);
-        else
-            return ImportanceSamplingAreaLight(areaLightBuffer[rand() * areaLightCount], position);
-    }
-    else if (sphereLightCount > 0)
+    if (roulette > 0.5)
         return ImportanceSamplingSphereLight(sphereLightBuffer[rand() * sphereLightCount], position);
     else
         return ImportanceSamplingAreaLight(areaLightBuffer[rand() * areaLightCount], position);
+#else
+    #ifdef SPHERE_LIGHT
+        return ImportanceSamplingSphereLight(sphereLightBuffer[rand() * sphereLightCount], position);
+    #else
+        return ImportanceSamplingAreaLight(areaLightBuffer[rand() * areaLightCount], position);
+    #endif
+#endif
 }
 
 ////////////////////////////

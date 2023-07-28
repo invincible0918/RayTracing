@@ -10,15 +10,6 @@ public class RayTracingMaster : MonoBehaviour
     public Material skyboxMat;
     public RenderTexture rt;
 
-    public enum LightType
-    {
-        SkyLight,
-        SphereLight,
-        AeraLight,
-        DiscLight
-    }
-
-    public LightType lightType = LightType.SkyLight;
     public GameObject[] sphereLights;
     public GameObject[] areaLights;
     public GameObject[] discLights;
@@ -238,52 +229,51 @@ public class RayTracingMaster : MonoBehaviour
 
     void InitLight()
     {
-        List<SphereLight> sphereLightList = new List<SphereLight>();    // position, radius,
-        List<AreaLight> areaLightList = new List<AreaLight>();      // position, forward, width, height, 8 float
-        List<DiscLight> discLightList = new List<DiscLight>();      // position, forward, radius, 7 float
+        List<SphereLight> sphereLightList = new List<SphereLight>(from light in sphereLights where light.activeInHierarchy select new SphereLight(light));    // position, radius,
+        List<AreaLight> areaLightList = new List<AreaLight>(from light in areaLights where light.activeInHierarchy select new AreaLight(light));      // position, forward, width, height, 8 float
+        List<DiscLight> discLightList = new List<DiscLight>(from light in discLights where light.gameObject.activeInHierarchy select new DiscLight(light));      // position, forward, radius, 7 float
 
-        switch (lightType)
-        {
-            case LightType.SkyLight:
-                Vector3 dir = skyLight.transform.forward;
-                cs.SetVector("light", new Vector4(dir.x, dir.y, dir.z, skyLight.intensity * lightIntensityScale));
-                cs.SetVector("lightColor", skyLight.color);
-                cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
-                break;
-            case LightType.SphereLight:
-                sphereLightList.AddRange(from light in sphereLights where light.activeInHierarchy select new SphereLight(light));
-                break;
-            case LightType.AeraLight:
-                areaLightList.AddRange(from light in areaLights where light.activeInHierarchy select new AreaLight(light));
-                break;
-            case LightType.DiscLight:
-                discLightList.AddRange(from light in discLights where light.gameObject.activeInHierarchy select new DiscLight(light));
-                break;
-        }
+        Vector3 dir = skyLight.transform.forward;
+        cs.SetVector("light", new Vector4(dir.x, dir.y, dir.z, skyLight.intensity * lightIntensityScale));
+        cs.SetVector("lightColor", skyLight.color);
+        cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
 
         if (sphereLightList.Count > 0)
         {
+            cs.EnableKeyword("SPHERE_LIGHT");
+
             sphereLightBuffer = new ComputeBuffer(sphereLightList.Count, sizeof(float) * 4);
             sphereLightBuffer.SetData(sphereLightList);
-            cs.SetInt("sphereLightCount", sphereLightList.Count);
             cs.SetBuffer(kernelHandle, "sphereLightBuffer", sphereLightBuffer);
+            cs.SetInt("sphereLightCount", sphereLightList.Count);
         }
+        else
+            cs.DisableKeyword("SPHERE_LIGHT");
 
         if (areaLightList.Count > 0)
         {
+            cs.EnableKeyword("AREA_LIGHT");
+
             areaLightBuffer = new ComputeBuffer(areaLightList.Count, sizeof(float) * 11);
             areaLightBuffer.SetData(areaLightList);
-            cs.SetInt("areaLightCount", areaLightList.Count);
             cs.SetBuffer(kernelHandle, "areaLightBuffer", areaLightBuffer);
+            cs.SetInt("areaLightCount", areaLightList.Count);
+
         }
+        else
+            cs.DisableKeyword("AREA_LIGHT");
 
         if (discLightList.Count > 0)
         {
+            cs.EnableKeyword("DISC_LIGHT");
+
             discLightBuffer = new ComputeBuffer(discLightList.Count, sizeof(float) * 7);
             discLightBuffer.SetData(discLightList);
-            cs.SetInt("discLightCount", discLightList.Count);
             cs.SetBuffer(kernelHandle, "discLightBuffer", discLightBuffer);
+            cs.SetInt("discLightCount", discLightList.Count);
         }
+        else
+            cs.DisableKeyword("DISC_LIGHT");
     }
 
     void CreateRT(ref RenderTexture rt)
