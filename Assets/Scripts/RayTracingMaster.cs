@@ -13,14 +13,58 @@ public class RayTracingMaster : MonoBehaviour
     public enum LightType
     {
         SkyLight,
-        AeraLight
+        SphereLight,
+        AeraLight,
+        DiscLight
     }
 
     public LightType lightType = LightType.SkyLight;
-    public Transform[] sphereLights;
-    public Transform[] areaLights;
-    ComputeBuffer lightBuffer;
+    public GameObject[] sphereLights;
+    public GameObject[] areaLights;
+    public GameObject[] discLights;
+    ComputeBuffer sphereLightBuffer;
+    ComputeBuffer areaLightBuffer;
+    ComputeBuffer discLightBuffer;
+    struct SphereLight
+    {
+        public Vector3 position;
+        public float radius;
+        public SphereLight(GameObject go)
+        {
+            position = go.transform.position;
+            radius = go.GetComponent<SphereCollider>().radius * go.transform.localScale.x;
+        }
+    }
 
+    struct AreaLight
+    {
+        public Vector3 position;
+        public Vector3 normal;
+        public Vector3 up;
+        public Vector2 size;
+        public AreaLight(GameObject go)
+        {
+            position = go.transform.position;
+            normal = -go.transform.forward;
+            up = go.transform.up;
+            size = go.GetComponent<BoxCollider>().size;
+            size.x *= go.transform.localScale.x;
+            size.y *= go.transform.localScale.y;
+        }
+    }
+
+    struct DiscLight
+    {
+        public Vector3 position;
+        public Vector3 normal;
+        public float radius;
+        public DiscLight(GameObject go)
+        {
+            position = go.transform.position;
+            normal = -go.transform.forward;
+            radius = go.GetComponent<SphereCollider>().radius * go.transform.localScale.x;
+        }
+    }
 
     public Light skyLight;
     public float lightIntensityScale = 2;
@@ -194,7 +238,9 @@ public class RayTracingMaster : MonoBehaviour
 
     void InitLight()
     {
-        List<Vector4> lightList = new List<Vector4>();
+        List<SphereLight> sphereLightList = new List<SphereLight>();    // position, radius,
+        List<AreaLight> areaLightList = new List<AreaLight>();      // position, forward, width, height, 8 float
+        List<DiscLight> discLightList = new List<DiscLight>();      // position, forward, radius, 7 float
 
         switch (lightType)
         {
@@ -204,29 +250,40 @@ public class RayTracingMaster : MonoBehaviour
                 cs.SetVector("lightColor", skyLight.color);
                 cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
                 break;
+            case LightType.SphereLight:
+                sphereLightList.AddRange(from light in sphereLights where light.activeInHierarchy select new SphereLight(light));
+                break;
             case LightType.AeraLight:
-                lightList.AddRange(from light in sphereLights 
-                                   where light.gameObject.activeInHierarchy
-                                   select new Vector4(light.transform.position.x,
-                                   light.transform.position.y,
-                                   light.GetComponent<SphereCollider>().radius * light.transform.localScale.x));
-                lightList.AddRange(from light in areaLights
-                                   where light.gameObject.activeInHierarchy
-                                   select new Vector4(light.transform.position.x,
-                                   light.transform.position.y,
-                                   light.transform.position.z,
-                                   light.transform.localScale.x));
+                areaLightList.AddRange(from light in areaLights where light.activeInHierarchy select new AreaLight(light));
+                break;
+            case LightType.DiscLight:
+                discLightList.AddRange(from light in discLights where light.gameObject.activeInHierarchy select new DiscLight(light));
                 break;
         }
 
-        if (lightList.Count == 0)
-            lightList.Add(Vector4.zero);
+        if (sphereLightList.Count > 0)
+        {
+            sphereLightBuffer = new ComputeBuffer(sphereLightList.Count, sizeof(float) * 4);
+            sphereLightBuffer.SetData(sphereLightList);
+            cs.SetInt("sphereLightCount", sphereLightList.Count);
+            cs.SetBuffer(kernelHandle, "sphereLightBuffer", sphereLightBuffer);
+        }
 
-        lightBuffer = new ComputeBuffer(lightList.Count, sizeof(float) * 4);
-        lightBuffer.SetData(lightList);
+        if (areaLightList.Count > 0)
+        {
+            areaLightBuffer = new ComputeBuffer(areaLightList.Count, sizeof(float) * 11);
+            areaLightBuffer.SetData(areaLightList);
+            cs.SetInt("areaLightCount", areaLightList.Count);
+            cs.SetBuffer(kernelHandle, "areaLightBuffer", areaLightBuffer);
+        }
 
-        cs.SetInt("lightCount", lightList.Count);
-        cs.SetBuffer(kernelHandle, "lightBuffer", lightBuffer);
+        if (discLightList.Count > 0)
+        {
+            discLightBuffer = new ComputeBuffer(discLightList.Count, sizeof(float) * 7);
+            discLightBuffer.SetData(discLightList);
+            cs.SetInt("discLightCount", discLightList.Count);
+            cs.SetBuffer(kernelHandle, "discLightBuffer", discLightBuffer);
+        }
     }
 
     void CreateRT(ref RenderTexture rt)
@@ -304,7 +361,7 @@ public class RayTracingMaster : MonoBehaviour
         if (!cs || !isActiveAndEnabled || !isInitialized)
             return;
 
-        // 只有面板上的数值发生变化的时候，或者start的时候，才会调用
+        // 鍙湁闈㈡澘涓婄殑鏁板�煎彂鐢熷彉鍖栫殑鏃跺�欙紝鎴栬�卻tart鐨勬椂鍊欙紝鎵嶄細璋冪敤
     }
 
     void UpdateParameters()
@@ -491,6 +548,8 @@ public class RayTracingMaster : MonoBehaviour
         vertexBuffer?.Release();
         indexBuffer?.Release();
 
-        lightBuffer?.Release();
+        sphereLightBuffer?.Release();
+        areaLightBuffer?.Release();
+        discLightBuffer?.Release();
     }
 }
