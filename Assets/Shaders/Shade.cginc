@@ -6,31 +6,6 @@ TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
 
-// Lighting Model 相关开始reflectedDir, outputDir, hit
-float3 ClassicLightingModel(RayHit hit, inout Ray ray)
-{
-    float3 finalColor;
-
-    float3 albedo = hit.albedo;
-    float3 normal = hit.normal;
-    float smoothness = hit.smoothness;
-    float metallic = hit.metallic;
-
-    float3 specularColor = lerp(albedo, albedo * 0.1f, metallic);
-    
-    // 公式参考 http://three-eyed-games.com/2018/05/12/gpu-path-tracing-in-unity-part-2/
-    
-    
-    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
-    
-    ray.direction = SampleHemisphere(reflect(ray.direction, hit.normal), alpha);
-    float f = (alpha + 2) / (alpha + 1);
-    float specChance = dot(specularColor, 1.0f / 3.0f);
-    finalColor = (1.0f / specChance) * specularColor * saturate(dot(hit.normal, ray.direction) * f);
-
-    return finalColor;
-}
-
 
 inline half Pow5 (half x)
 {
@@ -87,14 +62,17 @@ inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
 
 float3 Brdf(RayHit hit, inout Ray ray)
 {
-    float3 finalColor = 1;
+    // L(x,ωo)=Le(x,ωo)+∫ΩLi(x,ωi) * fr(x,ωi,ωo) * (ωo⋅n) * dωo
+    // output的光 = 自发光 + 入射的光 * BRDF * 反射的角度, 入射光即ray.energy
+    // 渲染方程的泰勒展开 https://zhuanlan.zhihu.com/p/463166884
+    // 转化成 Monte Carlo Integration 蒙特卡洛积分
+    // L(x,ωo)=Le(x,ωo) + 1/N * ∑fr(x, ωi, ωo) * (ωo⋅n) / pdf * dωo
 
-    ray.origin = hit.position + hit.normal * 0.001f;
+    float pdf;
+    ImportanceSampling(hit, ray, pdf);
 
-    ImportanceSampling(hit, ray);
-
-    return hit.albedo* saturate(dot(hit.normal, ray.direction));
-
+    float3 brdfColor = hit.albedo /*/ PI*/ * saturate(dot(hit.normal, ray.direction)) / pdf;
+    return brdfColor;
     //float pdf = 1;
     //float roulette = rand();
     ////float a = SmoothnessToPerceptualRoughness (hit.smoothness);
@@ -174,11 +152,9 @@ float3 Brdf(RayHit hit, inout Ray ray)
     specularTerm *= any(specColor) ? 1.0 : 0.0;
 
     half grazingTerm = saturate(smoothness + (1-oneMinusReflectivity));
-    finalColor =  diffColor * (/*gi.diffuse + */lightColor * diffuseTerm)
-                    + specularTerm * lightColor * FresnelTerm (specColor, lh)
-                    + surfaceReduction * /*gi.specular * */FresnelLerp (specColor, grazingTerm, nv);
-
-    return finalColor;
+    //finalColor =  diffColor * (/*gi.diffuse + */lightColor * diffuseTerm)
+    //                + specularTerm * lightColor * FresnelTerm (specColor, lh)
+    //                + surfaceReduction * /*gi.specular * */FresnelLerp (specColor, grazingTerm, nv);
 }
 
 
@@ -190,7 +166,7 @@ float3 Btdf(RayHit hit, inout Ray ray)
     float roulette = rand();
 
     if (roulette <= hit.transparent)
-        finalColor = Brdf(hit, ray);
+        Brdf(hit, ray);
     else
     {
         bool fromOutside = dot(ray.direction, hit.normal) < 0;
@@ -212,31 +188,23 @@ float3 Btdf(RayHit hit, inout Ray ray)
         // penetration
         // in this part the direction won't change
     }
-
     return finalColor;
 }
 
 float3 PbrLightingModel(RayHit hit, inout Ray ray)
 {
-    float3 finalColor = 1;
-
-    if (any(hit.emissionColor)) 
-        return 0;
-
+    // 这里就是渲染方程的具体实现
+    // 先考虑反射，再考虑折射
+    float3 finalColor = 0;
     float transparent = hit.transparent;
 
     // BSDF = BRDF + BTDF
     if (transparent < 0)
-    {
-        // BRDF
         finalColor = Brdf(hit, ray);
-    }
     else
-    {
-        // BTDF
         finalColor = Btdf(hit, ray);
-    }
-
+    
+    // 继续下一轮迭代
     return finalColor;
 }
 
@@ -344,16 +312,13 @@ float3 Shade(RayHit hit, inout Ray ray)
 
         //ray.direction = lerp(reflectedDir, CosineSampleHemisphere(hit.normal), hit.smoothness);
 
-        float3 finalColor = 0;
-
-        //finalColor = ClassicLightingModel(hit, ray);
-        finalColor = PbrLightingModel(hit, ray);
-
-        ray.energy *= finalColor;
-        
-        // 这里其实是渲染方程 L(x,ωo) ≈ Le(x,ωo) + 1/N * ∑2πfr(x, ωi, ωo)(ωi⋅n)L(x, ωi) 的发光项，但是目前我们先不考虑自发光物体 Le(x,ωo)
-        // 渲染方程的泰勒展开 https://zhuanlan.zhihu.com/p/463166884
-        return hit.emissionColor;
+        if (any(hit.emissionColor))  // 如果emission color有非0值，则直接返回emission color
+            return hit.emissionColor;
+        else
+        {
+            ray.energy *= PbrLightingModel(hit, ray);
+            return 0;
+        }
     }
     else
     {

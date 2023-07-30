@@ -60,8 +60,6 @@ public class RayTracingMaster : MonoBehaviour
     public Light skyLight;
     public float lightIntensityScale = 2;
 
-    float lightRadius = 0.05f;
-
     public Transform sphereParent;
     public Transform planeParent;
     // chapter 3.1
@@ -163,6 +161,8 @@ public class RayTracingMaster : MonoBehaviour
         isInitialized = true;
     }
 
+    ComputeBuffer testBuffer;
+
     private void OnDisable()
     {
         if (rt != null)
@@ -258,7 +258,6 @@ public class RayTracingMaster : MonoBehaviour
             areaLightBuffer.SetData(areaLightList);
             cs.SetBuffer(kernelHandle, "areaLightBuffer", areaLightBuffer);
             cs.SetInt("areaLightCount", areaLightList.Count);
-
         }
         else
             cs.DisableKeyword("AREA_LIGHT");
@@ -321,7 +320,6 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetFloat("seed", Random.value);
 
         cs.Dispatch(kernelHandle, groupX, groupY, 1);
-
         //bvh.Update();
         if (!aliasing)
             Graphics.Blit(rt, destination);
@@ -541,5 +539,6 @@ public class RayTracingMaster : MonoBehaviour
         sphereLightBuffer?.Release();
         areaLightBuffer?.Release();
         discLightBuffer?.Release();
+        testBuffer?.Release();
     }
 }

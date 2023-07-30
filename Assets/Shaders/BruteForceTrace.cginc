@@ -163,24 +163,24 @@ RayHit BruteForceTrace(Ray ray)
     //IntersectSphere(ray, sphere2, hit);
 
     // Trace Plane
-    for (uint i = 0; i < planeCount; ++i)
+    for (int i = 0; i < planeCount; ++i)
     {
         Plane plane = planeBuffer[i];
         IntersectPlane(ray, plane, hit);
     }
 
     // Trace Sphere
-    for (uint i = 0; i < sphereCount; ++i)
+    for (int j = 0; j < sphereCount; ++j)
     {
-        Sphere sphere = sphereBuffer[i];
+        Sphere sphere = sphereBuffer[j];
         IntersectSphere(ray, sphere, hit);
     }
 
     // chapter 3.1
     // Trace mesh
-    for (uint i = 0; i < meshCount; ++i)
+    for (int k = 0; k < meshCount; ++k)
     {
-        CMesh cmesh = meshBuffer[i];
+        CMesh cmesh = meshBuffer[k];
         IntersectMesh(ray, cmesh, hit);
     }
 
