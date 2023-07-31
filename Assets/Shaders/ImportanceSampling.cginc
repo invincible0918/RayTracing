@@ -20,26 +20,41 @@ float3 Tangent2World(float theta, float phi, float3 direction)
     return mul(localSpaceDir, GetTangentSpace(direction));
 }
 
-float3 UniformSampling(float3 normal, out float pdf)
+float3 UniformSampling(RayHit hit, inout Ray ray)
 {
+    // https://sites.google.com/site/ivorsgraphicsblog/ray-tracing-engine/cosine-distributed-sampling
+    // 这里处理的是 fr(x, ωi, ωo) * (ωo⋅n) / pdf 部分
+
+    // For a perfectly diffuse surface
+    // fr(x, ωi, ωo) = c / PI, c is the diffuse material color
+    // pdf = 1 / 2⋅PI
+    // fr(x, ωi, ωo) * (ωo⋅n) / pdf 化简为 2c * (ωo⋅n)
     float theta = 0.5 * PI * rand();
     float phi = 2.0 * PI * rand();
+    ray.direction = Tangent2World(theta, phi, hit.normal);
 
-    pdf = 1.0 / (2.0 * PI);
+    float pdf = 1.0 / (2.0 * PI);
+    float3 fr = hit.albedo / PI;
 
-    return Tangent2World(theta, phi, normal);
+    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
+
+    return result;
 }
 
-float3 CosineSampling(float3 normal, Ray ray, out float pdf)
+float3 CosineSampling(RayHit hit, inout Ray ray)
 {
+    // https://sites.google.com/site/ivorsgraphicsblog/ray-tracing-engine/cosine-distributed-sampling
     //float theta = acos(sqrt(1 - rand()));
     float theta = sqrt(rand());
     float phi = 2.0 * PI * rand();
+    ray.direction = Tangent2World(theta, phi, hit.normal);
 
-    float3 direction = Tangent2World(theta, phi, normal);
-    pdf = dot(normal, direction) / PI;
+    //pdf = cos / PI;
+    //float3 fr = hit.albedo / PI;
+    //float3 result = fr / pdf * cos; 可以化简
+    float3 result = hit.albedo;
 
-    return direction;
+    return result;
 }
 
 // Add Monte Carlo integration
@@ -234,13 +249,17 @@ float3 ImportanceSamplingBRDF(RayHit hit, float lightDir, float3 direction, out 
     return Tangent2World(theta, phi, normal);
 }
 
-void ImportanceSampling(RayHit hit, inout Ray ray, out float pdf)
+float3 ImportanceSampling(RayHit hit, inout Ray ray)
 {
+    // 这里处理的是 fr(x, ωi, ωo) * (ωo⋅n) / pdf 部分
+    float3 output = 0;
+
     ray.origin = hit.position + hit.normal * 0.001f;
+
     //ray.direction = UniformSampling(hit.normal);
     //ray.direction = CosineSampling(hit.normal);
 
-    float3 samplingLightDir = ImportanceSamplingLight(ray.origin, pdf);
+    //float3 samplingLightDir = ImportanceSamplingLight(ray.origin, pdf);
 
     //if (0.5 > rand()/* && dot(samplingLightDir, hit.normal) > 0*/)
     //{
@@ -249,10 +268,12 @@ void ImportanceSampling(RayHit hit, inout Ray ray, out float pdf)
     //else
     //{
         //if (hit.smoothness > rand())
-            ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
+            //ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
         //else
             //ray.direction = CosineSampling(hit.normal, ray, pdf);
-            //ray.direction = UniformSampling(hit.normal, pdf);
+    //output = UniformSampling(hit, ray);
+    output = CosineSampling(hit, ray);
+    return output;
     //}
 }
 #endif
