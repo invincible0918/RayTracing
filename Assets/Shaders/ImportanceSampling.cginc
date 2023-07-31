@@ -85,7 +85,7 @@ struct SphereLight
 int sphereLightCount;
 StructuredBuffer<SphereLight> sphereLightBuffer;
 
-float3 ImportanceSamplingSphereLight(SphereLight light, float3 position, out float pdf)
+float3 ImportanceSamplingSphereLight(RayHit hit, inout Ray ray, SphereLight light)
 {
     // https://zhuanlan.zhihu.com/p/508136071
     float maxCos = sqrt(1 - pow(light.radius / length(light.position - position), 2));
@@ -95,10 +95,15 @@ float3 ImportanceSamplingSphereLight(SphereLight light, float3 position, out flo
     float phi = 2.0 * PI * rand();
 
     float3 direction = normalize(light.position - position);
+    ray.direction = Tangent2World(theta, phi, direction);
 
-    pdf = 1.0 / (2.0 * PI * (1 - maxCos));
-    // Transform direction to world space
-    return Tangent2World(theta, phi, direction);
+    float pdf = 1.0 / (2.0 * PI * (1 - maxCos));
+
+    float3 fr = hit.albedo / PI;
+
+    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
+
+    return result;
 }
 #endif
 
@@ -113,7 +118,7 @@ struct AreaLight
 int areaLightCount;
 StructuredBuffer<AreaLight> areaLightBuffer;
 
-float3 ImportanceSamplingAreaLight(AreaLight light, float3 position, out float pdf)
+float3 ImportanceSamplingAreaLight(RayHit hit, inout Ray ray, AreaLight light)
 {
     // https://blog.csdn.net/qq_35312463/article/details/117190054
 
@@ -127,14 +132,19 @@ float3 ImportanceSamplingAreaLight(AreaLight light, float3 position, out float p
     float3 pointWS = mul(pointOnArea, m) + light.position;
 
     // Calculate pdf
-    float3 direction = pointWS - position;
-    float distanceSquard = dot(direction, direction);
+    ray.direction = pointWS - hit.position;
+    float distanceSquard = dot(ray.direction, ray.direction);
     float area = light.size.x * light.size.y;
-    float lightCosine = dot(normalize(-direction), light.normal);
+    float lightCosine = dot(normalize(-ray.direction), light.normal);
+    ray.direction = normalize(ray.direction);
 
-    pdf = distanceSquard / (lightCosine * area);
+    float pdf = distanceSquard / (lightCosine * area);
 
-    return pointWS;
+    float3 fr = hit.albedo / PI;
+
+    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
+
+    return result;
 }
 #endif
 
@@ -148,37 +158,45 @@ struct DiscLight
 int discLightCount;
 StructuredBuffer<DiscLight> discLightBuffer;
 
-float3 ImportanceSamplingDiscLight(DiscLight light, float3 position)
+float3 ImportanceSamplingDiscLight(RayHit hit, inout Ray ray, DiscLight light)
 {
     float theta = sqrt(rand() * light.radius);
     float phi = 2.0 * PI * rand();
 
-    float3 direction = normalize(light.position - position);
+    float3 direction = normalize(light.position - hit.position);
     // Transform direction to world space
-    return Tangent2World(theta, phi, direction);
+    ray.direction = Tangent2World(theta, phi, direction);
+
+    float pdf = 1 / (PI * light.radius * light.radius);
+
+    float3 fr = hit.albedo / PI;
+
+    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
+
+    return result;
 }
 #endif
 
 
-float3 ImportanceSamplingLight(float3 position, out float pdf)
+float3 ImportanceSamplingLight(RayHit hit, inout Ray ray)
 {
+    // https://blog.csdn.net/qq_35312463/article/details/117190054
 #if (defined (SPHERE_LIGHT)) && (defined (AREA_LIGHT))
     float roulette = rand();
     if (roulette > 0.5)
-        return ImportanceSamplingSphereLight(sphereLightBuffer[rand() * sphereLightCount], position, pdf);
+        return ImportanceSamplingSphereLight(hit, ray, sphereLightBuffer[rand() * sphereLightCount]);
     else
-        return ImportanceSamplingAreaLight(areaLightBuffer[rand() * areaLightCount], position, pdf);
+        return ImportanceSamplingAreaLight(hit, ray, areaLightBuffer[rand() * areaLightCount]);
 #else
     #ifdef SPHERE_LIGHT
-        return ImportanceSamplingSphereLight(sphereLightBuffer[rand() * sphereLightCount], position, pdf);
+        return ImportanceSamplingSphereLight(hit, ray, sphereLightBuffer[rand() * sphereLightCount]);
     #endif
 
     #if defined(AREA_LIGHT)
-        return ImportanceSamplingAreaLight(areaLightBuffer[rand() * areaLightCount], position, pdf);
+        return ImportanceSamplingAreaLight(hit, ray, areaLightBuffer[rand() * areaLightCount]);
     #endif
 #endif
 
-    pdf = -1;
     return 0;
 }
 
@@ -258,22 +276,20 @@ float3 ImportanceSampling(RayHit hit, inout Ray ray)
 
     //ray.direction = UniformSampling(hit.normal);
     //ray.direction = CosineSampling(hit.normal);
+    float3 lightOutput = ImportanceSamplingLight(hit, ray);
 
-    //float3 samplingLightDir = ImportanceSamplingLight(ray.origin, pdf);
-
-    //if (0.5 > rand()/* && dot(samplingLightDir, hit.normal) > 0*/)
-    //{
-    //    ray.direction = samplingLightDir;
-    //}
-    //else
-    //{
+    if (0.5 > rand() && dot(ray.direction, hit.normal) > 0)
+    {
+        output = lightOutput;
+    }
+    else
+    {
         //if (hit.smoothness > rand())
-            //ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
+        //    ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
         //else
-            //ray.direction = CosineSampling(hit.normal, ray, pdf);
     //output = UniformSampling(hit, ray);
-    output = CosineSampling(hit, ray);
+        output = CosineSampling(hit, ray);
+    }
     return output;
-    //}
 }
 #endif

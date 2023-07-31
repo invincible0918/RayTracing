@@ -324,7 +324,7 @@ float3 Shade(RayHit hit, inout Ray ray)
     else
     {
         ray.energy = 0.0f;
-        return 0.5;
+        return 0.0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
         float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
