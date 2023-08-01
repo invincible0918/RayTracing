@@ -1,6 +1,8 @@
 ﻿#ifndef IMPORTANCE_SAMPLING_INCLUDE
 #define IMPORTANCE_SAMPLING_INCLUDE
 
+static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.08, 0.08, 0.08, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
+
 float3x3 GetTangentSpace(float3 normal)
 {
     // Choose a helper vector for the cross product
@@ -88,13 +90,13 @@ StructuredBuffer<SphereLight> sphereLightBuffer;
 float3 ImportanceSamplingSphereLight(RayHit hit, inout Ray ray, SphereLight light)
 {
     // https://zhuanlan.zhihu.com/p/508136071
-    float maxCos = sqrt(1 - pow(light.radius / length(light.position - position), 2));
+    float maxCos = sqrt(1 - pow(light.radius / length(light.position - ray.origin), 2));
 
     float theta = acos(1 - rand() + rand() * maxCos);
     //theta = 2 * PI * u.x;
     float phi = 2.0 * PI * rand();
 
-    float3 direction = normalize(light.position - position);
+    float3 direction = normalize(light.position - ray.origin);
     ray.direction = Tangent2World(theta, phi, direction);
 
     float pdf = 1.0 / (2.0 * PI * (1 - maxCos));
@@ -218,6 +220,7 @@ float SmoothnessToPhongAlpha(float s)
   return pow(10000.0f, s);
 }
 
+// Sampling Blinn, 这个是最简单的Microfacet Model
 //float3 ImportanceSamplingBRDF(RayHit hit, float3 direction, out float pdf)
 //{
 //    // http://three-eyed-games.com/2018/05/12/gpu-path-tracing-in-unity-part-2/
@@ -234,34 +237,95 @@ float SmoothnessToPhongAlpha(float s)
 //    return Tangent2World(theta, phi, normal);
 //}
 
-float3 SpecularBRDF()
+// 和unity方法同名
+inline float GGXTerm (float NdotH, float roughness)
 {
-    return 1;
+    float a2 = roughness * roughness;
+    float d = (NdotH * a2 - NdotH) * NdotH + 1.0f; // 2 mad
+    return a2 / (PI * (d * d + 1e-7f)); // This function is not intended to be running on Mobile,
+                                            // therefore epsilon is smaller than what can be represented by half
+}
+
+inline half Pow5 (half x)
+{
+    return x*x * x*x * x;
+}
+
+inline half3 FresnelTerm (half3 F0, half cosA)
+{
+    half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
+    return F0 + (1-F0) * t;
+}
+
+// Ref: http://jcgt.org/published/0003/02/03/paper.pdf
+inline half SmithJointGGXVisibilityTerm (half NdotL, half NdotV, half roughness)
+{
+    // Approximation of the above formulation (simplify the sqrt, not mathematically correct but close enough)
+    half a = roughness;
+    half lambdaV = NdotL * (NdotV * (1 - a) + a);
+    half lambdaL = NdotV * (NdotL * (1 - a) + a);
+
+    return 0.5f / (lambdaV + lambdaL + 1e-5f);
+}
+
+float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness)
+{
+    half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact
+    half nl = saturate(dot(normal, lightDir));
+    float nh = saturate(dot(normal, halfDir));
+
+    half lv = saturate(dot(lightDir, viewDir));
+    half lh = saturate(dot(lightDir, halfDir));
+
+    half hv = saturate(dot(halfDir, viewDir));
+
+    float D = GGXTerm(nh, roughness);
+    float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, albedo, metallic);
+    float3 F = FresnelTerm(F0, hv);
+    float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
+
+    half specularTerm = D * G * PI;
+    specularTerm = max(0, specularTerm * nl);
+
+    float3 nominator = D * G * F;
+    float denominator = 4.0 * nv * nl + 0.001;
+    float3 brdf = nominator / denominator;
+    float pdf = D * nh / (4.0 * hv);
+
+    return metallic;
+    // 可以化简 brdf / pdf
+    if (pdf > 0)
+        return brdf / pdf * nl;
+    else
+        return 0;
+    return F * G * hv / (nv * nl * nh);
 }
 
 float3 ImportanceSamplingBRDF(RayHit hit, inout Ray ray)
 {
+    // https://zhuanlan.zhihu.com/p/505284731
     // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
     // https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
 
     float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+    // GGX with roughtness to 0 would mean no specular at all, using max(roughness, 0.002) here to match HDrenderloop roughtness remapping.
+    roughness = max(roughness, 0.002);
     float roughness2 = roughness * roughness;
 
     float e = rand();
     float theta = acos(sqrt((1 - e) / (e * (roughness2 - 1) + 1)));
     float phi = 2.0 * PI * rand();
 
-    ray.direction = Tangent2World(theta, phi, hit.normal);
+    // Microfacet normal, 微表面法线
+    float3 viewDir = normalize(-ray.direction);
+    float3 halfDir = Tangent2World(theta, phi, hit.normal);
+    ray.direction = normalize(reflect(ray.direction, halfDir)); 
 
-    //+0.00001f to avoid dividing by 0
-    float denom = (roughness2 - 1.0f) * cos(theta) * cos(theta) + 1.0f + 0.00001;
-    float pdf = (2 * roughness2 * cos(theta) * sin(theta))/* / (denom * denom)*/;
+    // float3 result = f / pdf * saturate(dot(hit.normal, ray.direction));
+    float3 specularBRDF = SpecularBRDF(hit.albedo, hit.metallic, hit.normal, viewDir, normalize(viewDir + ray.direction), ray.direction, roughness);
 
-    float3 fr = SpecularBRDF();
-    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
-
-    return hit.smoothness;
+    return specularBRDF;
 }
 
 float3 ImportanceSampling(RayHit hit, inout Ray ray)
@@ -273,15 +337,15 @@ float3 ImportanceSampling(RayHit hit, inout Ray ray)
 
     //float3 lightOutput = ImportanceSamplingLight(hit, ray);
 
-    //if (0.5 > rand() && dot(ray.direction, hit.normal) > 0)
+    //if (0.5 > rand()/* && dot(ray.direction, hit.normal) > 0*/)
     //{
     //    output = lightOutput;
     //}
     //else
     //{
-    //    //if (hit.smoothness > rand())
-    //    //    ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
-    //    //else
+    //    if (hit.smoothness > rand())
+    //        output = ImportanceSamplingBRDF(hit, ray);
+    //    else
     ////output = UniformSampling(hit, ray);
     //    output = CosineSampling(hit, ray);
     //}
