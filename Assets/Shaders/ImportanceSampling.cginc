@@ -218,7 +218,6 @@ float SmoothnessToPhongAlpha(float s)
   return pow(10000.0f, s);
 }
 
-
 //float3 ImportanceSamplingBRDF(RayHit hit, float3 direction, out float pdf)
 //{
 //    // http://three-eyed-games.com/2018/05/12/gpu-path-tracing-in-unity-part-2/
@@ -235,36 +234,34 @@ float SmoothnessToPhongAlpha(float s)
 //    return Tangent2World(theta, phi, normal);
 //}
 
-float3 ImportanceSamplingBRDF(RayHit hit, float lightDir, float3 direction, out float pdf)
+float3 SpecularBRDF()
+{
+    return 1;
+}
+
+float3 ImportanceSamplingBRDF(RayHit hit, inout Ray ray)
 {
     // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
-
-    // 使用场景内灯光方向计算效果更好，参考ppt, float3 lightDir = normalize(ray.direction);
-	//float3 lightDir = normalize(direction);
-    float3 camPos = mul(camera2World, float4(0, 0, 0, 1)).xyz;
-    float3 viewDir = normalize(camPos - hit.position);
-
-    float3 halfDir = normalize (lightDir + viewDir);
-    float nh = saturate(dot(hit.normal, halfDir));
+    // https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
 
     float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
     float roughness2 = roughness * roughness;
 
-    float f = (roughness2 - 1) * nh * nh + 1;
-    pdf = 1;//roughness2 * nh / (PI * f * f);
-
-    float e = roughness2 / (nh * nh * (pow(roughness2 - 1, 2) + roughness2 - 1)) - 1 / (roughness2 - 1);
-    //float theta = acos(sqrt((1 - e) / (e * (roughness2 - 1) + 1)));
-    //float phi = 2.0 * PI * rand();
-
-    float alpha = SmoothnessToPhongAlpha(hit.smoothness);
-
-    float theta = acos(pow(sqrt(rand()), 1 / (alpha+1)));
+    float e = rand();
+    float theta = acos(sqrt((1 - e) / (e * (roughness2 - 1) + 1)));
     float phi = 2.0 * PI * rand();
 
-    float3 normal = reflect(direction, hit.normal);
-    return Tangent2World(theta, phi, normal);
+    ray.direction = Tangent2World(theta, phi, hit.normal);
+
+    //+0.00001f to avoid dividing by 0
+    float denom = (roughness2 - 1.0f) * cos(theta) * cos(theta) + 1.0f + 0.00001;
+    float pdf = (2 * roughness2 * cos(theta) * sin(theta))/* / (denom * denom)*/;
+
+    float3 fr = SpecularBRDF();
+    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
+
+    return hit.smoothness;
 }
 
 float3 ImportanceSampling(RayHit hit, inout Ray ray)
@@ -274,22 +271,24 @@ float3 ImportanceSampling(RayHit hit, inout Ray ray)
 
     ray.origin = hit.position + hit.normal * 0.001f;
 
-    //ray.direction = UniformSampling(hit.normal);
-    //ray.direction = CosineSampling(hit.normal);
-    float3 lightOutput = ImportanceSamplingLight(hit, ray);
+    //float3 lightOutput = ImportanceSamplingLight(hit, ray);
 
-    if (0.5 > rand() && dot(ray.direction, hit.normal) > 0)
-    {
-        output = lightOutput;
-    }
-    else
-    {
-        //if (hit.smoothness > rand())
-        //    ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
-        //else
-    //output = UniformSampling(hit, ray);
-        output = CosineSampling(hit, ray);
-    }
+    //if (0.5 > rand() && dot(ray.direction, hit.normal) > 0)
+    //{
+    //    output = lightOutput;
+    //}
+    //else
+    //{
+    //    //if (hit.smoothness > rand())
+    //    //    ray.direction = ImportanceSamplingBRDF(hit, samplingLightDir, ray.direction, pdf);
+    //    //else
+    ////output = UniformSampling(hit, ray);
+    //    output = CosineSampling(hit, ray);
+    //}
+
+
+    output = ImportanceSamplingBRDF(hit, ray);
+
     return output;
 }
 #endif
