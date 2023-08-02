@@ -1,5 +1,5 @@
-﻿#ifndef IMPORTANCE_SAMPLING_INCLUDE
-#define IMPORTANCE_SAMPLING_INCLUDE
+﻿#ifndef BSDF_INCLUDE
+#define BSDF_INCLUDE
 
 static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
 

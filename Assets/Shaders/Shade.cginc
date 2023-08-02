@@ -180,7 +180,7 @@ float3 Shade(RayHit hit, inout Ray ray)
             return hit.emissionColor;
         else
         {
-            ray.energy *= hit.metallic;//PbrLightingModel(hit, ray);
+            ray.energy *= PbrLightingModel(hit, ray);
             return 0;
         }
     }
