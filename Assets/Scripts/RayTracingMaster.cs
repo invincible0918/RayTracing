@@ -85,6 +85,17 @@ public class RayTracingMaster : MonoBehaviour
     public Color shadowColor;
     public float shadowIntensity = 1f;
 
+    // Importance sampling
+    public enum SamplingType
+    {
+        Uniform,
+        Cosine,
+        LightImportance,
+        BRDFImportance,
+        MultipleImportance
+    }
+    public SamplingType samplingType = SamplingType.Uniform;
+
     // Post process
     public PostProcess postProcess;
     public bool enablePostProcess;
@@ -147,6 +158,7 @@ public class RayTracingMaster : MonoBehaviour
         InitRT();
         InitShader();
         InitLight();
+        InitSampling();
 
         // chapter 3.1
         if (isBruteForce)
@@ -273,6 +285,34 @@ public class RayTracingMaster : MonoBehaviour
         }
         else
             cs.DisableKeyword("DISC_LIGHT");
+    }
+
+    void InitSampling()
+    {
+        cs.DisableKeyword("UNIFORM_SAMPLING");
+        cs.DisableKeyword("COSINE_SAMPLING");
+        cs.DisableKeyword("LIGHT_IMPORTANCE_SAMPLING");
+        cs.DisableKeyword("BRDF_IMPORTANCE_SAMPLING");
+        cs.DisableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
+
+        switch (samplingType)
+        {
+            case SamplingType.Uniform:
+                cs.EnableKeyword("UNIFORM_SAMPLING");
+                break;
+            case SamplingType.Cosine:
+                cs.EnableKeyword("COSINE_SAMPLING");
+                break;
+            case SamplingType.LightImportance:
+                cs.EnableKeyword("LIGHT_IMPORTANCE_SAMPLING");
+                break;
+            case SamplingType.BRDFImportance:
+                cs.EnableKeyword("BRDF_IMPORTANCE_SAMPLING");
+                break;
+            case SamplingType.MultipleImportance:
+                cs.EnableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
+                break;
+        }
     }
 
     void CreateRT(ref RenderTexture rt)

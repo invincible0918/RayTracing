@@ -570,7 +570,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!135 &378490184
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -667,7 +667,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!135 &432925928
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -2036,6 +2036,7 @@ MonoBehaviour:
   isBruteForce: 0
   shadowColor: {r: 0.19215688, g: 0.21960786, b: 0.26666668, a: 1}
   shadowIntensity: 1
+  samplingType: 2
   postProcess: {fileID: 963194231}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
@@ -3658,7 +3659,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!135 &1779407239
 SphereCollider:
   m_ObjectHideFlags: 0

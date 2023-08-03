@@ -6,6 +6,13 @@
 #pragma multi_compile __ AREA_LIGHT
 #pragma multi_compile __ DISC_LIGHT
 
+#pragma multi_compile __ UNIFORM_SAMPLING
+#pragma multi_compile __ COSINE_SAMPLING
+#pragma multi_compile __ LIGHT_IMPORTANCE_SAMPLING
+#pragma multi_compile __ BRDF_IMPORTANCE_SAMPLING
+#pragma multi_compile __ MULTIPLE_IMPORTANCE_SAMPLING
+
+
 #include "Header.cginc"
 #include "BruteForceTrace.cginc"
 #include "BVHTrace.cginc"

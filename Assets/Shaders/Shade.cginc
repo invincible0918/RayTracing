@@ -5,54 +5,55 @@ TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
 
-float3 Brdf(RayHit hit, inout Ray ray)
-{
-    // L(x,ωo)=Le(x,ωo)+∫ΩLi(x,ωi) * fr(x,ωi,ωo) * (ωo⋅n) * dωo
-    // 论文里是 ωi⋅n, 是因为光线从光源出发，但是具体实现的时候我们是光线从摄像机出发
-    // 为什么要乘以一个 cos 值，是因为入射到表面的方向不同，则表面单位面积接受到的光能量大小也是不同的
-    // 同样强度的光，对于左边斜着方向发射到矩形的表面的光源和右边垂直发射到表面的光源，表面的单位面积接收到的光能量是不一样的。
+#if defined(UNIFORM_SAMPLING)
+#define FUNCTION_BRDF UniformSampling
 
-    // output的光 = 自发光 + 入射的光 * BRDF * 反射的角度, 入射光即ray.energy
-    // 渲染方程的泰勒展开 https://zhuanlan.zhihu.com/p/463166884
-    // 转化成 Monte Carlo Integration 蒙特卡洛积分
-    // L(x,ωo)=Le(x,ωo) + 1/N * ∑fr(x, ωi, ωo) * (ωo⋅n) / pdf * dωo
+#elif defined(COSINE_SAMPLING)
+#define FUNCTION_BRDF CosineSampling
 
-    // 这里处理的是 fr(x, ωi, ωo) * (ωo⋅n) / pdf 部分
-    return ImportanceSampling(hit, ray);
-}
+#elif defined(LIGHT_IMPORTANCE_SAMPLING)
+#define FUNCTION_BRDF LightImportanceSampling
 
+#elif defined(BRDF_IMPORTANCE_SAMPLING)
+#define FUNCTION_BRDF BRDFImportanceSampling
+
+#elif defined(MULTIPLE_IMPORTANCE_SAMPLING)
+#define FUNCTION_BRDF MultipleImportanceSampling
+
+#endif
 
 float3 Btdf(RayHit hit, inout Ray ray)
 {
     float3 finalColor = 1;
-
-    // 需要同时考虑反射和折射,https://zhuanlan.zhihu.com/p/58692781
-    float roulette = rand();
-
-    if (roulette <= hit.transparent)
-        Brdf(hit, ray);
-    else
-    {
-        bool fromOutside = dot(ray.direction, hit.normal) < 0;
-        float3 N = fromOutside ? hit.normal : -hit.normal;
-        float3 bias = N * 0.001f;
-        ray.origin = hit.position - bias;
-
-        // refraction
-        //float etai = 1;
-        //float etat = 1.55;
-
-        //float eta = fromOutside ? etai / etat : etat / etai;
-
-        ////float3 V = normalize(-ray.direction);
-        ////float3 H = ImportanceSampleGGX(float2(rand(), rand()), N, V, 1 - hit.smoothness);
-        ////finalColor = dot(ray.direction, -H);
-        //ray.direction = normalize(refract(ray.direction, N, eta));
-
-        // penetration
-        // in this part the direction won't change
-    }
     return finalColor;
+
+    //// 需要同时考虑反射和折射,https://zhuanlan.zhihu.com/p/58692781
+    //float roulette = rand();
+
+    //if (roulette <= hit.transparent)
+    //    Brdf(hit, ray);
+    //else
+    //{
+    //    bool fromOutside = dot(ray.direction, hit.normal) < 0;
+    //    float3 N = fromOutside ? hit.normal : -hit.normal;
+    //    float3 bias = N * 0.001f;
+    //    ray.origin = hit.position - bias;
+
+    //    // refraction
+    //    //float etai = 1;
+    //    //float etat = 1.55;
+
+    //    //float eta = fromOutside ? etai / etat : etat / etai;
+
+    //    ////float3 V = normalize(-ray.direction);
+    //    ////float3 H = ImportanceSampleGGX(float2(rand(), rand()), N, V, 1 - hit.smoothness);
+    //    ////finalColor = dot(ray.direction, -H);
+    //    //ray.direction = normalize(refract(ray.direction, N, eta));
+
+    //    // penetration
+    //    // in this part the direction won't change
+    //}
+    //return finalColor;
 }
 
 float3 PbrLightingModel(RayHit hit, inout Ray ray)
@@ -64,7 +65,7 @@ float3 PbrLightingModel(RayHit hit, inout Ray ray)
 
     // BSDF = BRDF + BTDF
     if (transparent < 0)
-        finalColor = Brdf(hit, ray);
+        finalColor = FUNCTION_BRDF(hit, ray);
     else
         finalColor = Btdf(hit, ray);
     
