@@ -29,7 +29,7 @@ half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
     return lightScatter * viewScatter;
 }
 
-float3 DiffuseBRDF(float3 albedo, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float perceptualRoughness)
+float3 DiffuseBRDF(float3 albedo, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float perceptualRoughness, out float pdf)
 {
     half nv = saturate(dot(normal, viewDir));    // This abs allow to limit artifact
     half nl = saturate(dot(normal, lightDir));
@@ -38,7 +38,10 @@ float3 DiffuseBRDF(float3 albedo, float3 normal, float3 viewDir, float3 halfDir,
     half diffuseTerm = DisneyDiffuse(nv, nl, lh, perceptualRoughness) * nl;
 
     // float pdf = nl / PI, albedo * diffuseTerm / pdf * nl, 可以化简为：
-    return albedo * diffuseTerm * PI * nl;
+    //float3 brdf = albedo / PI;//albedo * diffuseTerm * PI * nl;
+    float3 brdf = albedo * diffuseTerm/* * PI * nl*/;
+    pdf = nl / PI;
+    return brdf;
 }
 
 // Specular BRDF
@@ -99,7 +102,7 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness)
+float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
 {
     half nv = saturate(dot(normal, viewDir));    // This abs allow to limit artifact
     half nl = saturate(dot(normal, lightDir));
@@ -112,18 +115,20 @@ float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir
 
     float D = GGXTerm(nh, roughness);
     float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, albedo, metallic);
-    float3 F = FresnelTerm(F0, hv);
+    F = FresnelTerm(F0, hv);
     //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
     float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 
     float3 nominator = D * G * F;
     float denominator = 4.0 * nv * nl + 0.001;
     float3 brdf = nominator / denominator;
-    float pdf = D * nh / (4.0 * hv);
 
-    if (pdf > 0)
-        return brdf / pdf * nl;
-    else
-        return 1;
+    pdf = D * nh / (4.0 * hv);
+    return brdf;
+
+    //if (pdf > 0)
+    //    return brdf / pdf * nl;
+    //else
+    //    return 1;
 }
 #endif

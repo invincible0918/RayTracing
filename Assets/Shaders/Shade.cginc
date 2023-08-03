@@ -20,6 +20,9 @@ float skyboxRotation;
 #elif defined(MULTIPLE_IMPORTANCE_SAMPLING)
 #define FUNCTION_BRDF MultipleImportanceSampling
 
+#else
+#define FUNCTION_BRDF MultipleImportanceSampling
+
 #endif
 
 float3 Btdf(RayHit hit, inout Ray ray)
@@ -188,7 +191,7 @@ float3 Shade(RayHit hit, inout Ray ray)
     else
     {
         ray.energy = 0.0f;
-        return 0.0;
+        return 0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
         float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);

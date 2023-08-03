@@ -216,31 +216,61 @@ float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
 
     float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
-    // GGX with roughtness to 0 would mean no specular at all, using max(roughness, 0.002) here to match HDrenderloop roughtness remapping.
-    roughness = max(roughness, 0.002);
-    float roughness2 = roughness * roughness;
 
-    float e = rand();
-    float theta = acos(sqrt((1 - e) / (e * (roughness2 - 1) + 1)));
-    float phi = 2.0 * PI * rand();
+    float diffuseRatio = 0.5 * (1.0 - hit.smoothness);
+    float specularRoatio = 1 - diffuseRatio;
+    float roulette = rand();
 
-    // Microfacet normal, 微表面法线
+    float3 reflectionDir;
+    if (roulette < diffuseRatio)
+    {
+        float theta = sqrt(rand());
+        float phi = 2.0 * PI * rand();
+
+        reflectionDir = Tangent2World(theta, phi, hit.normal);
+    }
+    else
+    {
+        // GGX with roughtness to 0 would mean no specular at all, using max(roughness, 0.002) here to match HDrenderloop roughtness remapping.
+        roughness = max(roughness, 0.002);
+        float roughness2 = roughness * roughness;
+
+        float e = rand();
+        float theta = acos(sqrt((1 - e) / (e * (roughness2 - 1) + 1)));
+        float phi = 2.0 * PI * rand();
+
+        // Microfacet normal, 微表面法线
+        float3 microfacetNormal = Tangent2World(theta, phi, hit.normal);
+        reflectionDir = normalize(reflect(ray.direction, microfacetNormal));
+    }
+
     float3 viewDir = normalize(-ray.direction);
-    float3 microfacetNormal = Tangent2World(theta, phi, hit.normal);
-
-    float3 halfDir = normalize(viewDir + ray.direction);
-    float3 lightDir = normalize(reflect(ray.direction, microfacetNormal));
+    float3 halfDir = normalize(viewDir + reflectionDir);
+    float3 lightDir = reflectionDir;
 
     ray.origin = hit.position + hit.normal * 0.001f;
-    ray.direction = lightDir;
+    ray.direction = reflectionDir;
 
-    // float3 result = f / pdf * saturate(dot(hit.normal, ray.direction));
-    float3 diffuseBRDF = DiffuseBRDF(hit.albedo, hit.normal, viewDir, halfDir, lightDir, perceptualRoughness);
+    // 准备计算用参数
+    float diffusePdf;
+    float3 diffuseBRDF = DiffuseBRDF(hit.albedo, hit.normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
 
-    float3 specularBRDF = SpecularBRDF(hit.albedo, hit.metallic, hit.normal, viewDir, halfDir, lightDir, roughness);
+    float specularPdf;
+    float3 F;
+    float3 specularBRDF = SpecularBRDF(hit.albedo, hit.metallic, hit.normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+
+    float3 kS = F;
+    float3 kD = 1.0 - kS;
+    kD *= 1.0 - hit.metallic;
 
 
-    return specularBRDF;
+    float3 totalBrdf = (diffuseBRDF + specularBRDF) * saturate(dot(hit.normal, lightDir));
+    float totalPdf = diffusePdf  + specularPdf;
+    
+    if (totalPdf > 0)
+        return totalBrdf / totalPdf;
+    else
+        return 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////
