@@ -85,26 +85,23 @@ struct SphereLight
 int sphereLightCount;
 StructuredBuffer<SphereLight> sphereLightBuffer;
 
-float3 SphereLightImportanceSampling(RayHit hit, inout Ray ray, SphereLight light)
+void SphereLightImportanceSampling(RayHit hit, inout Ray ray, SphereLight light, out float3 func, out float pdf)
 {
     // https://zhuanlan.zhihu.com/p/508136071
-    float maxCos = sqrt(1 - pow(light.radius / length(light.position - ray.origin), 2));
+    // https://www.pbr-book.org/3ed-2018/Light_Transport_I_Surface_Reflection/Sampling_Light_Sources
+    float3 dir = light.position - hit.position;
+    float maxCos = sqrt(1 - pow(light.radius / length(dir), 2));
 
     float theta = acos(1 - rand() + rand() * maxCos);
     //theta = 2 * PI * u.x;
     float phi = 2.0 * PI * rand();
 
-    float3 direction = normalize(light.position - ray.origin);
+    float3 direction = normalize(dir);
     ray.origin = hit.position + hit.normal * 0.001f;
     ray.direction = Tangent2World(theta, phi, direction);
 
-    float pdf = 1.0 / (2.0 * PI * (1 - maxCos));
-
-    float3 fr = hit.albedo / PI;
-
-    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
-
-    return fr;
+    func = hit.albedo / PI * saturate(dot(hit.normal, ray.direction));
+    pdf = 1.0 / (2.0 * PI * (1 - maxCos));
 }
 #endif
 
@@ -119,7 +116,7 @@ struct AreaLight
 int areaLightCount;
 StructuredBuffer<AreaLight> areaLightBuffer;
 
-float3 AreaLightImportanceSampling(RayHit hit, inout Ray ray, AreaLight light)
+void AreaLightImportanceSampling(RayHit hit, inout Ray ray, AreaLight light, out float3 func, out float pdf)
 {
     // https://blog.csdn.net/qq_35312463/article/details/117190054
 
@@ -141,13 +138,8 @@ float3 AreaLightImportanceSampling(RayHit hit, inout Ray ray, AreaLight light)
     float lightCosine = dot(normalize(-ray.direction), light.normal);
     ray.direction = normalize(ray.direction);
 
-    float3 fr = hit.albedo / PI;
-    float pdf = distanceSquard / (lightCosine * area);
-
-
-    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
-
-    return result;
+    func = hit.albedo / PI * saturate(dot(hit.normal, ray.direction));
+    pdf = distanceSquard / (lightCosine * area);
 }
 #endif
 
@@ -161,7 +153,7 @@ struct DiscLight
 int discLightCount;
 StructuredBuffer<DiscLight> discLightBuffer;
 
-float3 DiscLightImportanceSampling(RayHit hit, inout Ray ray, DiscLight light)
+void DiscLightImportanceSampling(RayHit hit, inout Ray ray, DiscLight light, out float3 func, out float pdf)
 {
     float theta = sqrt(rand() * light.radius);
     float phi = 2.0 * PI * rand();
@@ -172,43 +164,89 @@ float3 DiscLightImportanceSampling(RayHit hit, inout Ray ray, DiscLight light)
     ray.origin = hit.position + hit.normal * 0.001f;
     ray.direction = Tangent2World(theta, phi, direction);
 
-    float pdf = 1 / (PI * light.radius * light.radius);
-
-    float3 fr = hit.albedo / PI;
-
-    float3 result = fr / pdf * saturate(dot(hit.normal, ray.direction));
-
-    return result;
+    func = hit.albedo / PI * saturate(dot(hit.normal, ray.direction));
+    pdf = 1 / (PI * light.radius * light.radius);
 }
 #endif
 
-
-float3 LightImportanceSampling(RayHit hit, inout Ray ray)
+void _LightImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out float pdf)
 {
     // https://blog.csdn.net/qq_35312463/article/details/117190054
 #if (defined (SPHERE_LIGHT)) && (defined (AREA_LIGHT))
     float roulette = rand();
     if (roulette > 0.5)
-        return SphereLightImportanceSampling(hit, ray, sphereLightBuffer[rand() * sphereLightCount]);
+        SphereLightImportanceSampling(hit, ray, sphereLightBuffer[rand() * sphereLightCount], func, pdf);
     else
-        return AreaLightImportanceSampling(hit, ray, areaLightBuffer[rand() * areaLightCount]);
+        AreaLightImportanceSampling(hit, ray, areaLightBuffer[rand() * areaLightCount], func, pdf);
 #else
     #ifdef SPHERE_LIGHT
-    return SphereLightImportanceSampling(hit, ray, sphereLightBuffer[rand() * sphereLightCount]);
+        SphereLightImportanceSampling(hit, ray, sphereLightBuffer[rand() * sphereLightCount], func, pdf);
     #endif
 
     #if defined(AREA_LIGHT)
-        return AreaLightImportanceSampling(hit, ray, areaLightBuffer[rand() * areaLightCount]);
+        AreaLightImportanceSampling(hit, ray, areaLightBuffer[rand() * areaLightCount], func, pdf);
     #endif
 #endif
+    
+    // 如果光线传递方向在normal后侧，则直接判断为不被照明到
+    if (dot(ray.direction, hit.normal) < 0.01)
+    {
+        func = 0;
+        pdf = -1;
+    }
+}
 
-    return 0;
+float3 LightImportanceSampling(RayHit hit, inout Ray ray)
+{
+    float3 func;
+    float pdf;
+
+    _LightImportanceSampling(hit, ray, func, pdf);
+
+    if (pdf > 0)
+        return func / pdf;
+    else
+        return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////// Importance sampling BRDF ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
+void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3 normal, float metallic, float perceptualRoughness, float roughness, float diffuseRatio, float specularRoatio, out float3 func, out float pdf)
+{
+    // 准备计算用参数
+    float oneMinusReflectivity;
+    float3 specColor;
+    float3 diffuse = DiffuseAndSpecularFromMetallic (albedo, metallic, /*out*/ specColor, /*out*/ oneMinusReflectivity);
+    //// shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
+    //// this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha
+    //half outputAlpha;
+    //s.Albedo = PreMultiplyAlpha (s.Albedo, s.Alpha, oneMinusReflectivity, /*out*/ outputAlpha);
+
+    float diffusePdf;
+    float3 diffuseBRDF = DiffuseBRDF(diffuse, normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
+
+    float specularPdf;
+    float3 F;
+    float3 specularBRDF = SpecularBRDF(diffuse, specColor, metallic, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+
+    float3 kS = F;
+    float3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+
+    float3 totalBrdf = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
+    
+    //if (diffusePdf > 0)
+    //    return diffuseBRDF/diffusePdf * saturate(dot(hit.normal, lightDir));
+    //else
+    //    return 1;
+
+    func = totalBrdf;
+    pdf = totalPdf;
+}
+
+void _BRDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inout Ray ray, out float3 func, out float pdf)
 {
     // https://zhuanlan.zhihu.com/p/505284731
     // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
@@ -217,7 +255,29 @@ float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
     float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
     float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
 
-    float diffuseRatio = 0.5 * (1.0 - hit.smoothness);
+    float diffuseRatio = 0.5 * (1.0 - hit.metallic);
+    float specularRoatio = 1 - diffuseRatio;
+
+    float3 viewDir = normalize(-inputDir);
+    float3 halfDir = normalize(viewDir + outputDir);
+    float3 lightDir = outputDir;
+
+    BRDF(viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
+
+    ray.origin = hit.position + hit.normal * 0.001f;
+    ray.direction = outputDir;
+}
+
+void _BRDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out float pdf)
+{
+    // https://zhuanlan.zhihu.com/p/505284731
+    // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
+    // https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
+
+    float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
+    float roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
+
+    float diffuseRatio = 0.5 * (1.0 - hit.metallic);
     float specularRoatio = 1 - diffuseRatio;
     float roulette = rand();
 
@@ -248,27 +308,21 @@ float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
     float3 halfDir = normalize(viewDir + reflectionDir);
     float3 lightDir = reflectionDir;
 
+    BRDF(viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
+
     ray.origin = hit.position + hit.normal * 0.001f;
     ray.direction = reflectionDir;
+}
 
-    // 准备计算用参数
-    float diffusePdf;
-    float3 diffuseBRDF = DiffuseBRDF(hit.albedo, hit.normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
+float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
+{
+    float3 func;
+    float pdf;
 
-    float specularPdf;
-    float3 F;
-    float3 specularBRDF = SpecularBRDF(hit.albedo, hit.metallic, hit.normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
-
-    float3 kS = F;
-    float3 kD = 1.0 - kS;
-    kD *= 1.0 - hit.metallic;
-
-
-    float3 totalBrdf = (diffuseBRDF + specularBRDF) * saturate(dot(hit.normal, lightDir));
-    float totalPdf = diffusePdf  + specularPdf;
+    _BRDFImportanceSampling(hit, ray, func, pdf);
     
-    if (totalPdf > 0)
-        return totalBrdf / totalPdf;
+    if (pdf > 0)
+        return func / pdf;
     else
         return 1;
 }
@@ -289,23 +343,50 @@ float3 MultipleImportanceSampling(RayHit hit, inout Ray ray)
     // L(x,ωo)=Le(x,ωo) + 1/N * ∑fr(x, ωi, ωo) * (ωo⋅n) / pdf * dωo
 
     // 这里处理的是 fr(x, ωi, ωo) / pdf * (ωo⋅n)  部分
+    float3 lightFunc;
+    float lightPdf;
+    float3 inputDir = ray.direction;
+    _LightImportanceSampling(hit, ray, lightFunc, lightPdf);
+    float3 outputDir = ray.direction;
 
-    float3 output = 0;
-
-    ray.origin = hit.position + hit.normal * 0.001f;
-
-    float3 lightOutput = LightImportanceSampling(hit, ray);
-    if (0.5 > rand()/* && dot(ray.direction, hit.normal) > 0*/)
+    // 0.01 不宜过小，否则会产生锯齿阴影
+    if (rand() > 0.5 && dot(hit.normal, outputDir) > 0.01)
     {
-        return lightOutput;
+        float lightWeight;
+
+        if (lightPdf > 0)
+            lightWeight = 0.5;
+
+        float3 brdfFunc;
+        float brdfPdf;
+        float brdfWeight;
+
+        _BRDFImportanceSampling(inputDir, outputDir, hit, ray, brdfFunc, brdfPdf);
+
+        if (brdfPdf > 0)
+            brdfWeight = 0.5;
+
+        float3 func = /*lightFunc + */brdfFunc;
+        float pdf = lightPdf * 0.5 + brdfFunc * 0.5;
+
+        if (pdf > 0)
+            return func / pdf;
+        else
+            return 0; // 如果光线传递方向在normal后侧，则直接判断为不被照明到
     }
     else
     {
-        //if (hit.smoothness > rand())
-        //    output = BRDFImportanceSampling(hit, ray);
-        //else
-    //output = UniformSampling(hit, ray);
-        return CosineSampling(hit, ray);
+        ray.direction = inputDir;
+
+        float3 func;
+        float pdf;
+
+        _BRDFImportanceSampling(hit, ray, func, pdf);
+
+        if (pdf > 0 )
+            return func / pdf;
+        else
+            return 1;
     }
 }
 #endif

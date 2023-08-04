@@ -89,6 +89,7 @@
     <None Include="Assets\Shaders\BVH\Constants.cginc" />
     <None Include="Assets\Shaders\PostProcess\UpSample.shader" />
     <None Include="Assets\Shaders\BVH\GlobalRadixSort.compute" />
+    <None Include="Assets\Shaders\MyPBR.shader" />
     <None Include="Assets\Shaders\TestLowFilter.shader" />
     <None Include="Assets\Shaders\NormalTest.shader" />
     <None Include="Assets\Shaders\BVH\LocalRadixSort.compute" />

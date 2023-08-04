@@ -2036,7 +2036,7 @@ MonoBehaviour:
   isBruteForce: 0
   shadowColor: {r: 0.19215688, g: 0.21960786, b: 0.26666668, a: 1}
   shadowIntensity: 1
-  samplingType: 3
+  samplingType: 4
   postProcess: {fileID: 963194231}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
@@ -2649,7 +2649,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 8498604592720852998, guid: 855be9fece34a54428c108b6ef38507f, type: 3}
       propertyPath: m_RootOrder
-      value: 19
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 8498604592720852998, guid: 855be9fece34a54428c108b6ef38507f, type: 3}
       propertyPath: m_LocalScale.x
@@ -4147,7 +4147,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1929697705
 Transform:
   m_ObjectHideFlags: 0

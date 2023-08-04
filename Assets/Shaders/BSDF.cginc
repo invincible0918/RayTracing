@@ -16,6 +16,23 @@ float3 LitDiffuseBRDF(float3 albedo)
     return albedo / PI;
 }
 
+inline half OneMinusReflectivityFromMetallic(half metallic)
+{
+    // We'll need oneMinusReflectivity, so
+    //   1-reflectivity = 1-lerp(dielectricSpec, 1, metallic) = lerp(1-dielectricSpec, 0, metallic)
+    // store (1-dielectricSpec) in unity_ColorSpaceDielectricSpec.a, then
+    //   1-reflectivity = lerp(alpha, 0, metallic) = alpha + metallic*(0 - alpha) =
+    //                  = alpha - metallic * alpha
+    half oneMinusDielectricSpec = COLOR_SPACE_DIELECTRIC_SPEC.a;
+    return oneMinusDielectricSpec - metallic * oneMinusDielectricSpec;
+}
+
+inline half3 DiffuseAndSpecularFromMetallic (half3 albedo, half metallic, out half3 specColor, out half oneMinusReflectivity)
+{
+    specColor = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, albedo, metallic);
+    oneMinusReflectivity = OneMinusReflectivityFromMetallic(metallic);
+    return albedo * oneMinusReflectivity;
+}
 
 // Diffuse BRDF
 // Note: Disney diffuse must be multiply by diffuseAlbedo / PI. This is done outside of this function.
@@ -37,9 +54,9 @@ float3 DiffuseBRDF(float3 albedo, float3 normal, float3 viewDir, float3 halfDir,
 
     half diffuseTerm = DisneyDiffuse(nv, nl, lh, perceptualRoughness) * nl;
 
-    // float pdf = nl / PI, albedo * diffuseTerm / pdf * nl, 可以化简为：
-    //float3 brdf = albedo / PI;//albedo * diffuseTerm * PI * nl;
-    float3 brdf = albedo * diffuseTerm/* * PI * nl*/;
+    // 通过计算漫反射模型 albedo / PI 和 albedo * diffuseTerm / PI 差别不是很大
+    //float3 brdf = albedo / PI;
+    float3 brdf =  albedo * diffuseTerm / PI;
     pdf = nl / PI;
     return brdf;
 }
@@ -102,7 +119,7 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
+float3 SpecularBRDF(float3 albedo, float3 specColor, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
 {
     half nv = saturate(dot(normal, viewDir));    // This abs allow to limit artifact
     half nl = saturate(dot(normal, lightDir));
@@ -114,8 +131,9 @@ float3 SpecularBRDF(float3 albedo, float metallic, float3 normal, float3 viewDir
     half hv = saturate(dot(halfDir, viewDir));
 
     float D = GGXTerm(nh, roughness);
-    float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, albedo, metallic);
+    float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
     F = FresnelTerm(F0, hv);
+    F = FresnelTerm(specColor, hv);
     //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
     float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 
