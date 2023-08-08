@@ -257,10 +257,10 @@ public class BVH : MonoBehaviour
     {
         List<MaterialData> datas = (from m in materials select new MaterialData
         {
-            albedo = new Vector3(m.color.r, m.color.g, m.color.b),
+            albedo = new Vector3(m.color.linear.r, m.color.linear.g, m.color.linear.b),
             metallic = Mathf.Max(0.01f, m.GetFloat("_Metallic")),
             smoothness = Mathf.Max(0.01f, m.GetFloat("_Glossiness")),
-            transparent = (int)(m.GetFloat("_Mode")) == 3 ? m.color.a : -1,
+            transparent = (int)(m.GetFloat("_Mode")) == 3 ? m.color.linear.a : -1,
             emissionColor = m.IsKeywordEnabled("_EMISSION") ?  new Vector3(m.GetColor("_EmissionColor").r, m.GetColor("_EmissionColor").g, m.GetColor("_EmissionColor").b) : Vector3.zero
         }).ToList();
 

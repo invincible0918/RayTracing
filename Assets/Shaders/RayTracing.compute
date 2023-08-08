@@ -9,7 +9,7 @@
 #pragma multi_compile __ UNIFORM_SAMPLING
 #pragma multi_compile __ COSINE_SAMPLING
 #pragma multi_compile __ LIGHT_IMPORTANCE_SAMPLING
-#pragma multi_compile __ BRDF_IMPORTANCE_SAMPLING
+#pragma multi_compile __ BSDF_IMPORTANCE_SAMPLING
 #pragma multi_compile __ MULTIPLE_IMPORTANCE_SAMPLING
 
 
@@ -98,6 +98,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 //    float3 shadow = Shadow(shadowRay, hit);
 //    col *= shadow;
 //#endif
-
+    
     destination[id.xy] = float4(col, 1);    
 }

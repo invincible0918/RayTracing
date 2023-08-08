@@ -4,24 +4,25 @@ static const float SPECCUBE_LOD_STEPS = 6;
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
 float skyboxRotation;
+float skyboxExposure;
 
 #if defined(UNIFORM_SAMPLING)
-#define FUNCTION_BRDF UniformSampling
+#define FUNCTION_BSDF UniformSampling
 
 #elif defined(COSINE_SAMPLING)
-#define FUNCTION_BRDF CosineSampling
+#define FUNCTION_BSDF CosineSampling
 
 #elif defined(LIGHT_IMPORTANCE_SAMPLING)
-#define FUNCTION_BRDF LightImportanceSampling
+#define FUNCTION_BSDF LightImportanceSampling
 
-#elif defined(BRDF_IMPORTANCE_SAMPLING)
-#define FUNCTION_BRDF BRDFImportanceSampling
+#elif defined(BSDF_IMPORTANCE_SAMPLING)
+#define FUNCTION_BSDF BSDFImportanceSampling
 
 #elif defined(MULTIPLE_IMPORTANCE_SAMPLING)
-#define FUNCTION_BRDF MultipleImportanceSampling
+#define FUNCTION_BSDF MultipleImportanceSampling
 
 #else
-#define FUNCTION_BRDF MultipleImportanceSampling
+#define FUNCTION_BSDF MultipleImportanceSampling
 
 #endif
 
@@ -57,23 +58,6 @@ float3 Btdf(RayHit hit, inout Ray ray)
     //    // in this part the direction won't change
     //}
     //return finalColor;
-}
-
-float3 PbrLightingModel(RayHit hit, inout Ray ray)
-{
-    // 这里就是渲染方程的具体实现
-    // 先考虑反射，再考虑折射
-    float3 finalColor = 0;
-    float transparent = hit.transparent;
-
-    // BSDF = BRDF + BTDF
-    if (transparent < 0)
-        finalColor = FUNCTION_BRDF(hit, ray);
-    else
-        finalColor = Btdf(hit, ray);
-    
-    // 继续下一轮迭代
-    return finalColor;
 }
 
 float3 RotateAroundYInDegrees(float3 dir, float degrees)
@@ -184,18 +168,21 @@ float3 Shade(RayHit hit, inout Ray ray)
             return hit.emissionColor;
         else
         {
-            ray.energy *= PbrLightingModel(hit, ray);
+            ray.energy *= FUNCTION_BSDF(hit, ray);
             return 0;
         }
     }
     else
     {
         ray.energy = 0.0f;
-        return 0;
+        //return 0.0;
         float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
         float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
+        perceptualRoughness = perceptualRoughness*(1.7 - 0.7*perceptualRoughness);
         half mip = PerceptualRoughnessToMipmapLevel(perceptualRoughness);
-        return skyboxCube.SampleLevel(sampler_LinearClamp, dir, mip).xyz;
+        float3 skyboxColor = skyboxCube.SampleLevel(sampler_LinearClamp, dir, mip).xyz;
+        skyboxColor = skyboxColor* skyboxExposure;
+        return skyboxColor;
     }
 }

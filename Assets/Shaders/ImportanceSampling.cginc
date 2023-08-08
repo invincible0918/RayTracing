@@ -22,7 +22,7 @@ float3 Tangent2World(float theta, float phi, float3 direction)
 {
     float3 localSpaceDir = float3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
     // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(direction));
+    return normalize(mul(localSpaceDir, GetTangentSpace(direction)));
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -228,15 +228,21 @@ void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3
 
     float specularPdf;
     float3 F;
-    float3 specularBRDF = SpecularBRDF(diffuse, specColor, metallic, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+    float3 specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
 
     float3 kS = F;
     float3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
+    float clearCoatPdf;
+
     float3 totalBrdf = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
     float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
     
+    float3 clearCoat = albedo *  OneMinusReflectivityFromMetallic(1);
+    clearCoat = ClearCoatBRDF(clearCoat, normal, viewDir, halfDir, lightDir, roughness, clearCoatPdf);
+
+    //totalBrdf += pow(clearCoat, 10);
     //if (diffusePdf > 0)
     //    return diffuseBRDF/diffusePdf * saturate(dot(hit.normal, lightDir));
     //else
@@ -246,7 +252,7 @@ void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3
     pdf = totalPdf;
 }
 
-void _BRDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inout Ray ray, out float3 func, out float pdf)
+void _BSDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inout Ray ray, out float3 func, out float pdf)
 {
     // https://zhuanlan.zhihu.com/p/505284731
     // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
@@ -268,8 +274,32 @@ void _BRDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inou
     ray.direction = outputDir;
 }
 
-void _BRDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out float pdf)
+void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out float pdf)
 {
+    // 这里就是渲染方程的具体实现
+    // BTDF
+    if (hit.transparent > 0 && rand() > hit.transparent)
+    {
+        bool fromOutside = dot(ray.direction, hit.normal) < 0;
+        float3 N = fromOutside ? hit.normal : -hit.normal;
+        float3 bias = N * 0.001f;
+        ray.origin = hit.position - bias;
+
+        // refraction
+        float etai = 1;
+        float etat = 1.01;
+
+        float eta = fromOutside ? etai / etat : etat / etai;
+        ray.direction = normalize(refract(ray.direction, N, eta));
+
+        func = 1;
+        pdf = 1;
+
+        // 继续下一轮迭代
+        return;
+    }
+
+    // BRDF
     // https://zhuanlan.zhihu.com/p/505284731
     // https://toposcat.top/cn/2020/10/13/Importance%20Sampling/
     // https://agraphicsguynotes.com/posts/sample_microfacet_brdf/
@@ -284,6 +314,7 @@ void _BRDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
     float3 reflectionDir;
     if (roulette < diffuseRatio)
     {
+        // CosineSampling
         float theta = sqrt(rand());
         float phi = 2.0 * PI * rand();
 
@@ -314,12 +345,12 @@ void _BRDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
     ray.direction = reflectionDir;
 }
 
-float3 BRDFImportanceSampling(RayHit hit, inout Ray ray)
+float3 BSDFImportanceSampling(RayHit hit, inout Ray ray)
 {
     float3 func;
     float pdf;
 
-    _BRDFImportanceSampling(hit, ray, func, pdf);
+    _BSDFImportanceSampling(hit, ray, func, pdf);
     
     if (pdf > 0)
         return func / pdf;
@@ -361,13 +392,13 @@ float3 MultipleImportanceSampling(RayHit hit, inout Ray ray)
         float brdfPdf;
         float brdfWeight;
 
-        _BRDFImportanceSampling(inputDir, outputDir, hit, ray, brdfFunc, brdfPdf);
+        _BSDFImportanceSampling(inputDir, outputDir, hit, ray, brdfFunc, brdfPdf);
 
         if (brdfPdf > 0)
             brdfWeight = 0.5;
 
         float3 func = /*lightFunc + */brdfFunc;
-        float pdf = lightPdf * 0.5 + brdfFunc * 0.5;
+        float pdf = lightPdf * 0.5 + brdfPdf * 0.5;
 
         if (pdf > 0)
             return func / pdf;
@@ -376,12 +407,13 @@ float3 MultipleImportanceSampling(RayHit hit, inout Ray ray)
     }
     else
     {
+        // 这里需要先将方向赋回初值
         ray.direction = inputDir;
 
         float3 func;
         float pdf;
 
-        _BRDFImportanceSampling(hit, ray, func, pdf);
+        _BSDFImportanceSampling(hit, ray, func, pdf);
 
         if (pdf > 0 )
             return func / pdf;

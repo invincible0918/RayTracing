@@ -119,9 +119,9 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float3 SpecularBRDF(float3 albedo, float3 specColor, float metallic, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
+float3 SpecularBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
 {
-    half nv = saturate(dot(normal, viewDir));    // This abs allow to limit artifact
+    half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact, 这条非常重要，使用sat会在边缘产生奇怪的高光
     half nl = saturate(dot(normal, lightDir));
     float nh = saturate(dot(normal, halfDir));
 
@@ -131,9 +131,40 @@ float3 SpecularBRDF(float3 albedo, float3 specColor, float metallic, float3 norm
     half hv = saturate(dot(halfDir, viewDir));
 
     float D = GGXTerm(nh, roughness);
-    float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
-    F = FresnelTerm(F0, hv);
+    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
+    //F = FresnelTerm(F0, hv);
     F = FresnelTerm(specColor, hv);
+    //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
+    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
+
+    float3 nominator = D * G * F;
+    float denominator = 4.0 * nv * nl + 0.001;
+    float3 brdf = nominator / denominator;
+
+    pdf = D * nh / (4.0 * hv);
+    return brdf;
+
+    //if (pdf > 0)
+    //    return brdf / pdf * nl;
+    //else
+    //    return 1;
+}
+
+float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float pdf)
+{
+    half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact, 这条非常重要，使用sat会在边缘产生奇怪的高光
+    half nl = saturate(dot(normal, lightDir));
+    float nh = saturate(dot(normal, halfDir));
+
+    half lv = saturate(dot(lightDir, viewDir));
+    half lh = saturate(dot(lightDir, halfDir));
+
+    half hv = saturate(dot(halfDir, viewDir));
+
+    float D = GGXTerm(nh, roughness);
+    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
+    //F = FresnelTerm(F0, hv);
+    float3 F = FresnelTerm(specColor, hv);
     //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
     float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 

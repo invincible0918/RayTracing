@@ -91,7 +91,7 @@ public class RayTracingMaster : MonoBehaviour
         Uniform,
         Cosine,
         LightImportance,
-        BRDFImportance,
+        BSDFImportance,
         MultipleImportance
     }
     public SamplingType samplingType = SamplingType.Uniform;
@@ -217,6 +217,7 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetInt("width", Screen.width);
         cs.SetInt("height", Screen.height);
         cs.SetFloat("skyboxRotation", skyboxMat.GetFloat("_Rotation"));
+        cs.SetFloat("skyboxExposure", skyboxMat.GetFloat("_Exposure"));
         cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
 
         cs.SetInt("destinationWidth", Screen.width);
@@ -292,7 +293,7 @@ public class RayTracingMaster : MonoBehaviour
         cs.DisableKeyword("UNIFORM_SAMPLING");
         cs.DisableKeyword("COSINE_SAMPLING");
         cs.DisableKeyword("LIGHT_IMPORTANCE_SAMPLING");
-        cs.DisableKeyword("BRDF_IMPORTANCE_SAMPLING");
+        cs.DisableKeyword("BSDF_IMPORTANCE_SAMPLING");
         cs.DisableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
 
         switch (samplingType)
@@ -306,8 +307,8 @@ public class RayTracingMaster : MonoBehaviour
             case SamplingType.LightImportance:
                 cs.EnableKeyword("LIGHT_IMPORTANCE_SAMPLING");
                 break;
-            case SamplingType.BRDFImportance:
-                cs.EnableKeyword("BRDF_IMPORTANCE_SAMPLING");
+            case SamplingType.BSDFImportance:
+                cs.EnableKeyword("BSDF_IMPORTANCE_SAMPLING");
                 break;
             case SamplingType.MultipleImportance:
                 cs.EnableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
