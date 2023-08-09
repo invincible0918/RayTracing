@@ -109,6 +109,11 @@ float GeometrySchlickGGX(float NdotV, float roughness)
     return nom / denom;
 }
 
+float GeometryKelemen(float LoH)
+{
+    return 0.25 / (LoH * LoH);
+}
+
 float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 {
     float NdotV = abs(dot(N, V));
@@ -150,8 +155,10 @@ float3 SpecularBRDF(float3 specColor, float3 normal, float3 viewDir, float3 half
     //    return 1;
 }
 
-float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float pdf)
+float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
 {
+    // 主要参考：https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
+    // https://google.github.io/filament//Materials.md.html#materialmodels/litmodel/clearcoat
     half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact, 这条非常重要，使用sat会在边缘产生奇怪的高光
     half nl = saturate(dot(normal, lightDir));
     float nh = saturate(dot(normal, halfDir));
@@ -161,15 +168,17 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
 
     half hv = saturate(dot(halfDir, viewDir));
 
-    float D = GGXTerm(nh, roughness);
-    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
-    //F = FresnelTerm(F0, hv);
-    float3 F = FresnelTerm(specColor, hv);
-    //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
-    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
+
+    // remapping and linearization of clear coat roughness
+    float clearCoatRoughness = clamp(roughness, 0.089, 1.0);
+
+    // clear coat BRDF
+    float D = GGXTerm(nh, clearCoatRoughness);
+    float G = GeometryKelemen(lh);
+    F = FresnelTerm(0.04, lh);
 
     float3 nominator = D * G * F;
-    float denominator = 4.0 * nv * nl + 0.001;
+    float denominator = 1;// 4.0 * nv * nl + 0.001;
     float3 brdf = nominator / denominator;
 
     pdf = D * nh / (4.0 * hv);
@@ -180,4 +189,5 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
     //else
     //    return 1;
 }
+
 #endif

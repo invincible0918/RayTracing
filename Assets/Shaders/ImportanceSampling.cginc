@@ -235,12 +235,17 @@ void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3
     kD *= 1.0 - metallic;
 
     float clearCoatPdf;
+    float3 Fc;
+    float3 clearCoatBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, Fc, clearCoatPdf);
 
-    float3 totalBrdf = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
     float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
-    
-    float3 clearCoat = albedo *  OneMinusReflectivityFromMetallic(1);
-    clearCoat = ClearCoatBRDF(clearCoat, normal, viewDir, halfDir, lightDir, roughness, clearCoatPdf);
+
+    totalBRDF = ((diffuseBRDF * kD + specularBRDF * (1 - Fc)) * (1 - Fc) + clearCoatBRDF) * saturate(dot(normal, lightDir));
+    totalPdf = diffusePdf * diffuseRatio + (specularPdf + clearCoatPdf) * specularRoatio;
+
+    totalBRDF = Fc;
+    totalPdf = 1;
 
     //totalBrdf += pow(clearCoat, 10);
     //if (diffusePdf > 0)
@@ -248,7 +253,7 @@ void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3
     //else
     //    return 1;
 
-    func = totalBrdf;
+    func = totalBRDF;
     pdf = totalPdf;
 }
 

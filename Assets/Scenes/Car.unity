@@ -194,6 +194,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: sphere64
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 5baf088d2b24595498e406e56d72a83b, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5baf088d2b24595498e406e56d72a83b, type: 3}
 --- !u!1 &71197710
@@ -4725,7 +4729,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9131834901594727100, guid: 855be9fece34a54428c108b6ef38507f, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 9134175776906903957, guid: 855be9fece34a54428c108b6ef38507f, type: 3}
       propertyPath: m_IsActive
