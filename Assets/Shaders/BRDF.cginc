@@ -168,16 +168,27 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
 
     half hv = saturate(dot(halfDir, viewDir));
 
-
+    // clear coat layer
     // remapping and linearization of clear coat roughness
     float clearCoatRoughness = clamp(roughness, 0.089, 1.0);
 
     // clear coat BRDF
-    float D = GGXTerm(nh, clearCoatRoughness);
-    float G = GeometryKelemen(lh);
-    F = FresnelTerm(0.04, lh);
+    float Dc = GGXTerm(nh, clearCoatRoughness);
+    //float f0 = (1.5 - 1)^2 / (1.5 + 1)^2 = 0.04, https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
+    float F0 = 0.04;
+    float3 Fc = FresnelTerm(F0, lh);
+    float Gc = GeometryKelemen(lh);
 
-    float3 nominator = D * G * F;
+    // base layer
+    float D = GGXTerm(nh, roughness);
+    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
+    //F = FresnelTerm(F0, hv);
+    float3 F0base = pow(1 - 5 * sqrt(Fc), 2) / pow(5 * sqrt(Fc), 2);
+    F = FresnelTerm(F0base * specColor, lh);
+    //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
+    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
+
+    float3 nominator = D * G * F * pow(1 - Fc, 2) + Dc * Gc * Fc * 0.5;
     float denominator = 1;// 4.0 * nv * nl + 0.001;
     float3 brdf = nominator / denominator;
 
@@ -188,6 +199,46 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
     //    return brdf / pdf * nl;
     //else
     //    return 1;
+}
+
+void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3 normal, float metallic, float perceptualRoughness, float roughness, float diffuseRatio, float specularRoatio, out float3 func, out float pdf)
+{
+    // 准备计算用参数
+    float oneMinusReflectivity;
+    float3 specColor;
+    float3 diffuse = DiffuseAndSpecularFromMetallic(albedo, metallic, /*out*/ specColor, /*out*/ oneMinusReflectivity);
+    //// shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
+    //// this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha
+    //half outputAlpha;
+    //s.Albedo = PreMultiplyAlpha (s.Albedo, s.Alpha, oneMinusReflectivity, /*out*/ outputAlpha);
+
+    float diffusePdf;
+    float3 diffuseBRDF = DiffuseBRDF(diffuse, normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
+
+    float3 specularBRDF;
+    float specularPdf;
+    float3 F;
+
+    if (materialType == 3)
+        specularBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+    else
+        specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+
+    float3 kS = F;
+    float3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+
+    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
+
+    //totalBrdf += pow(clearCoat, 10);
+    //if (diffusePdf > 0)
+    //    return diffuseBRDF/diffusePdf * saturate(dot(hit.normal, lightDir));
+    //else
+    //    return 1;
+
+    func = totalBRDF;
+    pdf = totalPdf;
 }
 
 #endif

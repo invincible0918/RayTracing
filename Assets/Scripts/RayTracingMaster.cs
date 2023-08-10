@@ -97,7 +97,7 @@ public class RayTracingMaster : MonoBehaviour
     public SamplingType samplingType = SamplingType.Uniform;
 
     // Post process
-    public PostProcess postProcess;
+    public PostProcessStack postProcessStack;
     public bool enablePostProcess;
     public RenderTexture postProcessRT;
 
@@ -375,7 +375,7 @@ public class RayTracingMaster : MonoBehaviour
 
             if (enablePostProcess)
             {
-                postProcess.Render(convergedRT, postProcessRT);
+                postProcessStack.Render(convergedRT, postProcessRT);
                 Graphics.Blit(postProcessRT, destination);
             }
             else

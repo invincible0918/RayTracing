@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PostProcess : MonoBehaviour
+public class Bloom : PostProcessBase
 {
     // Bloom start: https://zhuanlan.zhihu.com/p/525500877
 
@@ -41,7 +41,7 @@ public class PostProcess : MonoBehaviour
     Material postDebugMat;
     // Bloom end
 
-    public void Render(RenderTexture source, RenderTexture destination)
+    public void RenderImage(RenderTexture source, RenderTexture destination)
     {
         Shader.SetGlobalInt("_downSampleBlurSize", downSampleBlurSize);
         Shader.SetGlobalFloat("_downSampleBlurSigma", downSampleBlurSigma);
@@ -51,23 +51,23 @@ public class PostProcess : MonoBehaviour
         Shader.SetGlobalFloat("_luminanceThreshole", luminanceThreshole);
         Shader.SetGlobalFloat("_bloomIntensity", bloomIntensity);
 
-        // ¸ßÁÁÏñËØÉ¸Ñ¡
+        // é«˜äº®åƒç´ ç­›é€‰
         RenderTexture RT_threshold = RenderTexture.GetTemporary(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
         RT_threshold.filterMode = FilterMode.Bilinear;
         Graphics.Blit(source, RT_threshold, thresholdMat);
 
 
-        int N = downSampleStep;  // ÏÂ²ÉÑù´ÎÊı
+        int N = downSampleStep;  // ä¸‹é‡‡æ ·æ¬¡æ•°
         int downSize = 2;
         RenderTexture[] RT_BloomDown = new RenderTexture[N];
 
-        // ´´½¨ÎÆÀí
+        // åˆ›å»ºçº¹ç†
         for (int i = 0; i < N; i++)
         {
             int w = Screen.width / downSize;
             int h = Screen.height / downSize;
             RT_BloomDown[i] = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            RT_BloomDown[i].filterMode = FilterMode.Bilinear;   // ÆôÓÃË«ÏßĞÔÂË²¨
+            RT_BloomDown[i].filterMode = FilterMode.Bilinear;   // å¯ç”¨åŒçº¿æ€§æ»¤æ³¢
             downSize *= 2;
         }
 
@@ -79,20 +79,20 @@ public class PostProcess : MonoBehaviour
         }
 
 
-        // ´´½¨ÉÏ²ÉÑùÎÆÀí
+        // åˆ›å»ºä¸Šé‡‡æ ·çº¹ç†
         RenderTexture[] RT_BloomUp = new RenderTexture[N];
         for (int i = 0; i < N - 1; i++)
         {
             int w = RT_BloomDown[N - 2 - i].width;
             int h = RT_BloomDown[N - 2 - i].height;
             RT_BloomUp[i] = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            RT_BloomUp[i].filterMode = FilterMode.Bilinear;   // ÆôÓÃË«ÏßĞÔÂË²¨
+            RT_BloomUp[i].filterMode = FilterMode.Bilinear;   // å¯ç”¨åŒçº¿æ€§æ»¤æ³¢
         }
 
         // up sample : RT_BloomUp[i] = Blur(RT_BloomDown[N-2-i]) + RT_BloomUp[i-1]
-        // RT_BloomDown[N-2-i] ÊÇÔ­Ê¼µÄÇ°Ò»¼¶ mip,³ß´çÎª (w, h)
-        // RT_BloomUp[i-1] ÊÇ»ìºÏºóµÄÇ°Ò»¼¶ mip, ³ß´çÎª (w/2, h/2)
-        // RT_BloomUp[i] ÊÇµ±Ç°´ı´¦ÀíµÄ mip, ³ß´çÎª (w, h)
+        // RT_BloomDown[N-2-i] æ˜¯åŸå§‹çš„å‰ä¸€çº§ mip,å°ºå¯¸ä¸º (w, h)
+        // RT_BloomUp[i-1] æ˜¯æ··åˆåçš„å‰ä¸€çº§ mip, å°ºå¯¸ä¸º (w/2, h/2)
+        // RT_BloomUp[i] æ˜¯å½“å‰å¾…å¤„ç†çš„ mip, å°ºå¯¸ä¸º (w, h)
         Shader.SetGlobalTexture("_PrevMip", RT_BloomDown[N - 1]);
         Graphics.Blit(RT_BloomDown[N - 2], RT_BloomUp[0], upSampleMat);
         for (int i = 1; i < N - 1; i++)

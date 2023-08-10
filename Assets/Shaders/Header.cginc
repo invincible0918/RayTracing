@@ -29,6 +29,7 @@ struct RayHit
     float smoothness;
     float transparent;
     float3 emissionColor;
+    uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
     int castShadow;
     int receiveShadow;
 };

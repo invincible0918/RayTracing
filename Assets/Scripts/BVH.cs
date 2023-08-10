@@ -51,6 +51,35 @@ public class BVH : MonoBehaviour
         public float smoothness;
         public float transparent;
         public Vector3 emissionColor;
+        public uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
+
+        public MaterialData(Material mat)
+        {
+            albedo = new Vector3(mat.color.linear.r, mat.color.linear.g, mat.color.linear.b);
+            metallic = Mathf.Max(0.01f, mat.GetFloat("_Metallic"));
+            smoothness = Mathf.Max(0.01f, mat.GetFloat("_Glossiness"));
+            transparent = -1;
+            emissionColor = Vector3.zero;
+            materialType = 0;
+
+            if ((int)(mat.GetFloat("_Mode")) == 3)
+            {
+                transparent = mat.color.linear.a;
+                materialType = 1;
+            }
+            
+            if (mat.IsKeywordEnabled("_EMISSION"))
+            {
+                Color color = mat.GetColor("_EmissionColor");
+                emissionColor = new Vector3(color.r, color.g, color.b);
+                materialType = 2;
+            }
+
+            if (mat.name.ToLower().Contains("_paint_"))
+            {
+                materialType = 3;
+            }
+        }
     }
 
     public void Init(ComputeShader shader, int handle)
@@ -255,16 +284,8 @@ public class BVH : MonoBehaviour
 
     void InitMaterialData(List<Material> materials)
     {
-        List<MaterialData> datas = (from m in materials select new MaterialData
-        {
-            albedo = new Vector3(m.color.linear.r, m.color.linear.g, m.color.linear.b),
-            metallic = Mathf.Max(0.01f, m.GetFloat("_Metallic")),
-            smoothness = Mathf.Max(0.01f, m.GetFloat("_Glossiness")),
-            transparent = (int)(m.GetFloat("_Mode")) == 3 ? m.color.linear.a : -1,
-            emissionColor = m.IsKeywordEnabled("_EMISSION") ?  new Vector3(m.GetColor("_EmissionColor").r, m.GetColor("_EmissionColor").g, m.GetColor("_EmissionColor").b) : Vector3.zero
-        }).ToList();
-
-        materialDataBuffer = new ComputeBuffer(materials.Count, sizeof(float) * 9);
+        MaterialData[] datas = (from m in materials select new MaterialData(m)).ToArray();
+        materialDataBuffer = new ComputeBuffer(materials.Count, sizeof(float) * 9 + sizeof(uint));
         materialDataBuffer.SetData(datas);
     }
 

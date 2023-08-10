@@ -1,7 +1,7 @@
 ﻿#ifndef IMPORTANCE_SAMPLING_INCLUDE
 #define IMPORTANCE_SAMPLING_INCLUDE
 
-#include "BSDF.cginc"
+#include "BRDF.cginc"
 
 /////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// Common function ///////////////////////////////
@@ -212,51 +212,6 @@ float3 LightImportanceSampling(RayHit hit, inout Ray ray)
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////// Importance sampling BRDF ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-void BRDF(float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3 normal, float metallic, float perceptualRoughness, float roughness, float diffuseRatio, float specularRoatio, out float3 func, out float pdf)
-{
-    // 准备计算用参数
-    float oneMinusReflectivity;
-    float3 specColor;
-    float3 diffuse = DiffuseAndSpecularFromMetallic (albedo, metallic, /*out*/ specColor, /*out*/ oneMinusReflectivity);
-    //// shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
-    //// this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha
-    //half outputAlpha;
-    //s.Albedo = PreMultiplyAlpha (s.Albedo, s.Alpha, oneMinusReflectivity, /*out*/ outputAlpha);
-
-    float diffusePdf;
-    float3 diffuseBRDF = DiffuseBRDF(diffuse, normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
-
-    float specularPdf;
-    float3 F;
-    float3 specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
-
-    float3 kS = F;
-    float3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;
-
-    float clearCoatPdf;
-    float3 Fc;
-    float3 clearCoatBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, Fc, clearCoatPdf);
-
-    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
-    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
-
-    totalBRDF = ((diffuseBRDF * kD + specularBRDF * (1 - Fc)) * (1 - Fc) + clearCoatBRDF) * saturate(dot(normal, lightDir));
-    totalPdf = diffusePdf * diffuseRatio + (specularPdf + clearCoatPdf) * specularRoatio;
-
-    totalBRDF = Fc;
-    totalPdf = 1;
-
-    //totalBrdf += pow(clearCoat, 10);
-    //if (diffusePdf > 0)
-    //    return diffuseBRDF/diffusePdf * saturate(dot(hit.normal, lightDir));
-    //else
-    //    return 1;
-
-    func = totalBRDF;
-    pdf = totalPdf;
-}
-
 void _BSDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inout Ray ray, out float3 func, out float pdf)
 {
     // https://zhuanlan.zhihu.com/p/505284731
@@ -273,7 +228,7 @@ void _BSDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inou
     float3 halfDir = normalize(viewDir + outputDir);
     float3 lightDir = outputDir;
 
-    BRDF(viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
+    BRDF(hit.materialType, viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
 
     ray.origin = hit.position + hit.normal * 0.001f;
     ray.direction = outputDir;
@@ -283,7 +238,7 @@ void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
 {
     // 这里就是渲染方程的具体实现
     // BTDF
-    if (hit.transparent > 0 && rand() > hit.transparent)
+    if (hit.materialType == 1 && rand() > hit.transparent)
     {
         bool fromOutside = dot(ray.direction, hit.normal) < 0;
         float3 N = fromOutside ? hit.normal : -hit.normal;
@@ -344,7 +299,7 @@ void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
     float3 halfDir = normalize(viewDir + reflectionDir);
     float3 lightDir = reflectionDir;
 
-    BRDF(viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
+    BRDF(hit.materialType, viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, func, pdf);
 
     ray.origin = hit.position + hit.normal * 0.001f;
     ray.direction = reflectionDir;

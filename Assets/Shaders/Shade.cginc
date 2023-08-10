@@ -26,40 +26,6 @@ float skyboxExposure;
 
 #endif
 
-float3 Btdf(RayHit hit, inout Ray ray)
-{
-    float3 finalColor = 1;
-    return finalColor;
-
-    //// 需要同时考虑反射和折射,https://zhuanlan.zhihu.com/p/58692781
-    //float roulette = rand();
-
-    //if (roulette <= hit.transparent)
-    //    Brdf(hit, ray);
-    //else
-    //{
-    //    bool fromOutside = dot(ray.direction, hit.normal) < 0;
-    //    float3 N = fromOutside ? hit.normal : -hit.normal;
-    //    float3 bias = N * 0.001f;
-    //    ray.origin = hit.position - bias;
-
-    //    // refraction
-    //    //float etai = 1;
-    //    //float etat = 1.55;
-
-    //    //float eta = fromOutside ? etai / etat : etat / etai;
-
-    //    ////float3 V = normalize(-ray.direction);
-    //    ////float3 H = ImportanceSampleGGX(float2(rand(), rand()), N, V, 1 - hit.smoothness);
-    //    ////finalColor = dot(ray.direction, -H);
-    //    //ray.direction = normalize(refract(ray.direction, N, eta));
-
-    //    // penetration
-    //    // in this part the direction won't change
-    //}
-    //return finalColor;
-}
-
 float3 RotateAroundYInDegrees(float3 dir, float degrees)
 {
     float alpha = degrees * PI / 180.0;
@@ -164,7 +130,7 @@ float3 Shade(RayHit hit, inout Ray ray)
 
         //ray.direction = lerp(reflectedDir, CosineSampleHemisphere(hit.normal), hit.smoothness);
 
-        if (any(hit.emissionColor))  // 如果emission color有非0值，则直接返回emission color
+        if (hit.materialType == 2)  // 如果emission color有非0值，则直接返回emission color
             return hit.emissionColor;
         else
         {

@@ -1959,6 +1959,7 @@ GameObject:
   - component: {fileID: 963194229}
   - component: {fileID: 963194230}
   - component: {fileID: 963194231}
+  - component: {fileID: 963194232}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2064,7 +2065,7 @@ MonoBehaviour:
   shadowColor: {r: 0.19215688, g: 0.21960786, b: 0.26666668, a: 1}
   shadowIntensity: 1
   samplingType: 4
-  postProcess: {fileID: 963194231}
+  postProcessStack: {fileID: 963194231}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
   bvh: {fileID: 963194230}
@@ -2099,19 +2100,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6b7826363f376c4fbe818d40c8c3d71, type: 3}
+  m_Script: {fileID: 11500000, guid: 457baf26a54c93445a3ca487dd137cb6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  downSampleStep: 7
-  downSampleBlurSize: 5
-  downSampleBlurSigma: 1
-  upSampleBlurSize: 5
-  upSampleBlurSigma: 1
-  useKarisAverage: 0
-  luminanceThreshole: 10
-  bloomIntensity: 0.02
-  debugFlag: 0
-  mipDebugIndex: 0
+  denoise: {fileID: 963194232}
+  bloom: {fileID: 0}
+  postProcessRT: {fileID: 0}
+--- !u!114 &963194232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9098f0ad95ec76f4f97826655438e7c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &986456616
 GameObject:
   m_ObjectHideFlags: 0
