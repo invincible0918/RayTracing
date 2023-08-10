@@ -155,7 +155,7 @@ float3 SpecularBRDF(float3 specColor, float3 normal, float3 viewDir, float3 half
     //    return 1;
 }
 
-float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf)
+float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf, out float3 Fc, out float3 brdfc, out float pdfc)
 {
     // 主要参考：https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
     // https://google.github.io/filament//Materials.md.html#materialmodels/litmodel/clearcoat
@@ -176,7 +176,7 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
     float Dc = GGXTerm(nh, clearCoatRoughness);
     //float f0 = (1.5 - 1)^2 / (1.5 + 1)^2 = 0.04, https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
     float F0 = 0.04;
-    float3 Fc = FresnelTerm(F0, lh);
+    Fc = FresnelTerm(F0, lh);
     float Gc = GeometryKelemen(lh);
 
     // base layer
@@ -188,17 +188,17 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
     //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
     float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 
-    float3 nominator = D * G * F * pow(1 - Fc, 2) + Dc * Gc * Fc * 0.5;
-    float denominator = 1;// 4.0 * nv * nl + 0.001;
+    float3 nominator = D * G * F;
+    float denominator = 4.0 * nv * nl + 0.001;
     float3 brdf = nominator / denominator;
 
     pdf = D * nh / (4.0 * hv);
-    return brdf;
 
-    //if (pdf > 0)
-    //    return brdf / pdf * nl;
-    //else
-    //    return 1;
+    // clear coat output
+    brdfc = Dc * Gc * Fc;
+    pdfc = 0;//Dc * nh / (4.0 * hv);
+
+    return brdf;
 }
 
 void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3 normal, float metallic, float perceptualRoughness, float roughness, float diffuseRatio, float specularRoatio, out float3 func, out float pdf)
@@ -218,9 +218,12 @@ void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, fl
     float3 specularBRDF;
     float specularPdf;
     float3 F;
+    float3 Fc = 0;
+    float3 clearCoatBRDF = 0;
+    float clearCoatPdf = 0;
 
     if (materialType == 3)
-        specularBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+        specularBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf, Fc, clearCoatBRDF, clearCoatPdf);
     else
         specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
 
@@ -228,8 +231,9 @@ void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, fl
     float3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
-    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
-    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
+    //float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float3 totalBRDF = ((diffuseBRDF * kD + specularBRDF * (1 - Fc)) * (1 - Fc) + clearCoatBRDF) * saturate(dot(normal, lightDir));
+    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio + clearCoatPdf;
 
     //totalBrdf += pow(clearCoat, 10);
     //if (diffusePdf > 0)
@@ -239,6 +243,9 @@ void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, fl
 
     func = totalBRDF;
     pdf = totalPdf;
+
+    //func = clearCoatBRDF;
+    //pdf = clearCoatPdf;
 }
 
 #endif
