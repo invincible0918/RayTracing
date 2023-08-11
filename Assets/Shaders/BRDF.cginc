@@ -196,7 +196,7 @@ float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 hal
 
     // clear coat output
     brdfc = Dc * Gc * Fc;
-    pdfc = 0;//Dc * nh / (4.0 * hv);
+    pdfc = nl / PI;//Dc * nh / (4.0 * hv);
 
     return brdf;
 }
@@ -244,8 +244,8 @@ void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, fl
     func = totalBRDF;
     pdf = totalPdf;
 
-    //func = clearCoatBRDF;
-    //pdf = clearCoatPdf;
+    //func = saturate(dot(normal, lightDir));
+    //pdf = 1;
 }
 
 #endif
