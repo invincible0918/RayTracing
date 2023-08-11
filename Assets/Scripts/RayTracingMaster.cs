@@ -219,9 +219,6 @@ public class RayTracingMaster : MonoBehaviour
         cs.SetFloat("skyboxRotation", skyboxMat.GetFloat("_Rotation"));
         cs.SetFloat("skyboxExposure", skyboxMat.GetFloat("_Exposure"));
         cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
-
-        cs.SetInt("destinationWidth", Screen.width);
-        cs.SetInt("destinationHeight", Screen.height);
     }
 
     void InitCamera()

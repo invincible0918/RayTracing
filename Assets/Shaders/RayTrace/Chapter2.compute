@@ -1,0 +1,39 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#include "Header.cginc"
+#include "BruteForceRayTrace.cginc"
+#include "Shade.cginc"
+
+////////////// chapter2_1 //////////////
+RWTexture2D<float4> destination;
+int width;
+int height;
+
+////////////// chapter2_1 //////////////
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    ////////////// chapter2_1 //////////////
+    //Ray ray = CreateCameraRay(0);
+
+    ////////////// chapter2_2 //////////////
+    // transform pixel from (0, 1) to (-1, 1)
+    float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
+
+    Ray ray = CreateCameraRay(uv);
+
+    float3 col = float3(0, 0, 0);
+
+    for (int i = 0; i < 1; i++)
+    {
+        RayHit hit = BruteForceRayTrace(ray);
+        col += /*ray.energy * */Shade(hit, ray);
+        if (!any(ray.energy))   // any(x): x!=0 return true
+            break;
+    }
+
+    destination[id.xy] = float4(col, 1);
+}
