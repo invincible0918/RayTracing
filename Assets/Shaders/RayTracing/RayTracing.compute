@@ -2,7 +2,7 @@
 #pragma kernel CSMain
 
 #include "Header.cginc"
-#include "BruteForceRayTrace.cginc"
+#include "BruteForceRayTracing.cginc"
 #include "Shade.cginc"
 
 ////////////// chapter2_1 //////////////
@@ -10,18 +10,25 @@ RWTexture2D<float4> destination;
 int width;
 int height;
 
+//////////////// chapter3_5 //////////////
+float4 pixelOffset;
+
 ////////////// chapter2_1 //////////////
-
-
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+    //////////////// chapter3_2 //////////////
+    //pixel = id.xy;
+
     ////////////// chapter2_1 //////////////
     //Ray ray = CreateCameraRay(0);
 
     ////////////// chapter2_2 //////////////
     // transform pixel from (0, 1) to (-1, 1)
-    float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
+    //float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
+
+    //////////////// chapter3_5 //////////////
+    float2 uv = float2((id.xy + pixelOffset.xy * 2 - 1) / float2(width, height)) * 2 - 1;
 
     Ray ray = CreateCameraRay(uv);
 
@@ -30,6 +37,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     for (int i = 0; i < MAX_BOUNCE; i++)
     {
         RayHit hit = BruteForceRayTrace(ray);
+
+        //col += Shade(hit, ray);
+        // chapter3_1
         col += ray.energy * Shade(hit, ray);
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;

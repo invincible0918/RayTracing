@@ -4,7 +4,7 @@ using UnityEngine;
 
 // 需要相机的 OnRenderImage
 [RequireComponent(typeof(Camera))]
-public class Chapter2 : MonoBehaviour
+public class RayTracing : MonoBehaviour
 {
     ////////////// chapter2_1 //////////////
     public ComputeShader cs;
@@ -17,18 +17,34 @@ public class Chapter2 : MonoBehaviour
     ////////////// chapter2_2 //////////////
     public MeshCollector meshCollector;
 
+    //////////////// chapter3_4 //////////////
+    public Light mainLight;
+    public Color shadowColor;
+    public float shadowIntensity = 1f;
+
+    //////////////// chapter3_5 //////////////
+    public RenderTexture convergedRT;
+    public bool aliasing;
+    public uint currentSample = 0;
+    Material addMaterial;
+
     // Start is called before the first frame update
     void Start()
     {
         ////////////// chapter2_1 //////////////
         InitCamera();
         InitRT();
+        //////////////// chapter3_4 //////////////
+        InitLight();
         InitShader();
         ////////////// chapter2_2 //////////////
         meshCollector.Init(cs, kernelHandle);
 
         isInitialized = true;
     }
+
+    ////////////// chapter3_1 //////////////
+    public Material skyboxMat;
 
     // Update is called once per frame
     void Update()
@@ -50,7 +66,9 @@ public class Chapter2 : MonoBehaviour
         if (!cs || !isActiveAndEnabled || !isInitialized)
             return;
 
-        if (rt == null || rt.width != Screen.width || rt.height != Screen.height)
+        //if (rt == null || rt.width != Screen.width || rt.height != Screen.height)
+        //////////////// chapter3_5 //////////////
+        if (rt == null || convergedRT == null || rt.width != Screen.width || rt.height != Screen.height)
             InitRT();
 
         UpdateParameters();
@@ -60,7 +78,22 @@ public class Chapter2 : MonoBehaviour
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
 
         cs.Dispatch(kernelHandle, groupX, groupY, 1);
-        Graphics.Blit(rt, destination);
+        //////////////// chapter3_5 //////////////
+        //Graphics.Blit(rt, destination);
+        if (!aliasing)
+            Graphics.Blit(rt, destination);
+        else
+        {
+            // Anti-Aliasing
+            // Blit the result texture to the screen
+            if (addMaterial == null)
+                addMaterial = new Material(Shader.Find("MyCustom/AddShader"));
+            addMaterial.SetFloat("_Sample", currentSample);
+            Graphics.Blit(rt, convergedRT, addMaterial);
+            Graphics.Blit(convergedRT, destination);
+
+            currentSample++;
+        }
     }
 
     #region chapter2_1
@@ -73,6 +106,10 @@ public class Chapter2 : MonoBehaviour
     void InitRT()
     {
         CreateRT(ref rt);
+        //////////////// chapter3_5 //////////////
+        CreateRT(ref convergedRT);
+        // Reset sampling
+        currentSample = 0;
     }
 
     void InitShader()
@@ -81,6 +118,9 @@ public class Chapter2 : MonoBehaviour
 
         cs.SetInt("width", Screen.width);
         cs.SetInt("height", Screen.height);
+
+        ////////////// chapter3_1 //////////////
+        cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
     }
 
     void UpdateParameters()
@@ -90,7 +130,8 @@ public class Chapter2 : MonoBehaviour
         // chapter2_2
         cs.SetMatrix("camera2World", cam.cameraToWorldMatrix);
         cs.SetMatrix("cameraInverseProjection", cam.projectionMatrix.inverse);
-
+        //////////////// chapter3_5 //////////////
+        cs.SetVector("pixelOffset", new Vector4(Random.value, Random.value, 0, 0));
     }
 
     void CreateRT(ref RenderTexture rt)
@@ -104,5 +145,23 @@ public class Chapter2 : MonoBehaviour
         };
         rt.Create();
     }
+
+    private void OnDisable()
+    {
+        if (rt != null)
+            rt.Release();
+
+        if (convergedRT != null)
+            convergedRT.Release();
+    }
     #endregion
+
+    //////////////// chapter3_4 //////////////
+    void InitLight()
+    {
+        Vector3 dir = mainLight.transform.forward;
+        cs.SetVector("lightParameter", new Vector4(dir.x, dir.y, dir.z, mainLight.intensity));
+        cs.SetVector("lightColor", mainLight.color);
+        cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
+    }
 }

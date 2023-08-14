@@ -56,6 +56,8 @@
     <Analyzer Include="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\Extensions\Microsoft\Visual Studio Tools for Unity\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\PostProcess\PostProcessStack.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\Bloom.cs" />
     <Compile Include="Assets\Free HDR Skyboxes Pack\Example Scenes\Script\RotateCamera.cs" />
     <Compile Include="Assets\Scripts\BVH\MeshBufferContainer.cs" />
     <Compile Include="Assets\Scripts\BVH\SceneDataTypes.cs" />
@@ -63,27 +65,25 @@
     <Compile Include="Assets\Scripts\BVH\ComputeBufferSorter.cs" />
     <Compile Include="Assets\Scripts\BVH\Utils.cs" />
     <Compile Include="Assets\Scripts\PostProcess\PostProcessBase.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\Denoise.cs" />
     <Compile Include="Assets\Scripts\BVH\DataBuffer.cs" />
+    <Compile Include="Assets\Scripts\RayTracing\MeshCollector.cs" />
     <Compile Include="Assets\Scripts\RayTracingMaster.cs" />
     <Compile Include="Assets\Scripts\BVH\MeshData.cs" />
     <Compile Include="Assets\Scripts\BVH.cs" />
     <Compile Include="Assets\Scripts\BVH\Constants.cs" />
+    <Compile Include="Assets\Scripts\RayTracing\RayTracing.cs" />
     <Compile Include="Assets\Scripts\BVH\BVHConstructor.cs" />
     <Compile Include="Assets\Scripts\CarPreprocessing.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\Denoise.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\PostProcessStack.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\Bloom.cs" />
-    <Compile Include="Assets\Scripts\Chapter2\Chapter2.cs" />
-    <Compile Include="Assets\Scripts\Chapter2\MeshCollector.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\BVHTrace.cginc" />
-    <None Include="Assets\Shaders\RayTrace\Chapter2.compute" />
+    <None Include="Assets\Shaders\RayTracing\RayTracing.compute" />
     <None Include="Assets\Shaders\PostProcess\PostDebug.shader" />
-    <None Include="Assets\Shaders\RayTrace\Header.cginc" />
+    <None Include="Assets\Shaders\RayTracing\Header.cginc" />
     <None Include="Assets\Shaders\PostProcess\Post.shader" />
     <None Include="Assets\Shaders\PostProcess\Denoise.shader" />
-    <None Include="Assets\Shaders\RayTrace\BruteForceRayTrace.cginc" />
+    <None Include="Assets\Shaders\RayTracing\BruteForceRayTracing.cginc" />
     <None Include="Assets\Shaders\BVH\MeshData.compute" />
     <None Include="Assets\Shaders\RayTracing.compute" />
     <None Include="Assets\Shaders\Shadow.cginc" />
@@ -93,7 +93,7 @@
     <None Include="Assets\Shaders\PostProcessShader.shader" />
     <None Include="Assets\Shaders\BRDF.cginc" />
     <None Include="Assets\Shaders\Header.cginc" />
-    <None Include="Assets\Shaders\RayTrace\Shade.cginc" />
+    <None Include="Assets\Shaders\RayTracing\Shade.cginc" />
     <None Include="Assets\Free HDR Skyboxes Pack\ReadMe.txt" />
     <None Include="Assets\Shaders\BVH\Constants.cginc" />
     <None Include="Assets\Shaders\PostProcess\UpSample.shader" />
@@ -101,6 +101,7 @@
     <None Include="Assets\Shaders\MyPBR.shader" />
     <None Include="Assets\Shaders\TestLowFilter.shader" />
     <None Include="Assets\Shaders\NormalTest.shader" />
+    <None Include="Assets\Shaders\RayTracing\WhittedRayTracing.cginc" />
     <None Include="Assets\Shaders\BVH\LocalRadixSort.compute" />
     <None Include="Assets\Shaders\ImportanceSampling.cginc" />
     <None Include="Assets\Shaders\Shade.cginc" />
