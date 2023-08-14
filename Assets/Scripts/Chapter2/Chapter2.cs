@@ -6,7 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class Chapter2 : MonoBehaviour
 {
-    #region chapter2_1
+    ////////////// chapter2_1 //////////////
     public ComputeShader cs;
     public RenderTexture rt;
 
@@ -14,12 +14,8 @@ public class Chapter2 : MonoBehaviour
     Camera cam;
     bool isInitialized;
 
-    #endregion
-
-    #region chapter2_1
+    ////////////// chapter2_2 //////////////
     public MeshCollector meshCollector;
-
-    #endregion
 
     // Start is called before the first frame update
     void Start()

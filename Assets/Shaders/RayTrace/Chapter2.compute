@@ -27,10 +27,10 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float3 col = float3(0, 0, 0);
 
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < MAX_BOUNCE; i++)
     {
         RayHit hit = BruteForceRayTrace(ray);
-        col += /*ray.energy * */Shade(hit, ray);
+        col += ray.energy * Shade(hit, ray);
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;
     }
