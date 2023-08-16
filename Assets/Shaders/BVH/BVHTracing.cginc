@@ -1,4 +1,4 @@
-﻿#include "BVH/Constants.cginc"
+﻿#include "Constants.cginc"
 
 struct MaterialData
 {
@@ -56,9 +56,9 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
                 hit.smoothness = materialData.smoothness;
                 hit.transparent = materialData.transparent;
                 hit.emissionColor = materialData.emissionColor;
-                hit.materialType = materialData.materialType;
-                hit.castShadow = tri.castShadow;
-                hit.receiveShadow = tri.receiveShadow;
+                //hit.materialType = materialData.materialType;
+                //hit.castShadow = tri.castShadow;
+                //hit.receiveShadow = tri.receiveShadow;
             }
         }
     }

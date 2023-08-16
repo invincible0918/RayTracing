@@ -15,7 +15,7 @@
 
 #include "Header.cginc"
 #include "BruteForceTrace.cginc"
-#include "BVHTrace.cginc"
+#include "BVH/BVHTracing.cginc"
 #include "Shade.cginc"
 #include "Shadow.cginc"
 

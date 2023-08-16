@@ -17,6 +17,9 @@ public class RayTracing : MonoBehaviour
     ////////////// chapter2_2 //////////////
     public MeshCollector meshCollector;
 
+    ////////////// chapter3_1 //////////////
+    public Material skyboxMat;
+
     //////////////// chapter3_4 //////////////
     public Light mainLight;
     public Color shadowColor;
@@ -28,6 +31,10 @@ public class RayTracing : MonoBehaviour
     public uint currentSample = 0;
     Material addMaterial;
 
+    ////////////// chapter4_3 //////////////
+    public BVH bvh;
+    public bool useBVH;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -37,14 +44,26 @@ public class RayTracing : MonoBehaviour
         //////////////// chapter3_4 //////////////
         InitLight();
         InitShader();
+
         ////////////// chapter2_2 //////////////
-        meshCollector.Init(cs, kernelHandle);
+        //meshCollector.Init(cs, kernelHandle);
+        ////////////// chapter4_3 //////////////
+        // 开始 bvh 部分
+        if (useBVH)
+        {
+            bvh.Init(cs, kernelHandle);
+            cs.EnableKeyword("BVH");
+        }
+        else
+        {
+            meshCollector.Init(cs, kernelHandle);
+            cs.DisableKeyword("BVH");
+        }
 
         isInitialized = true;
     }
 
-    ////////////// chapter3_1 //////////////
-    public Material skyboxMat;
+
 
     // Update is called once per frame
     void Update()

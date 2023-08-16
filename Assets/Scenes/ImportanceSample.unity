@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.96662414, g: 0.9423553, b: 0.9427893, a: 1}
+  m_IndirectSpecularColor: {r: 0.20689607, g: 0.20169762, b: 0.20180523, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -1092,7 +1092,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5d3a61f1010d2b547b8af96d1ec79240, type: 2}
+  - {fileID: 2100000, guid: 388f92220ff14b143a99d4860e7f0222, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1302,7 +1302,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5d3a61f1010d2b547b8af96d1ec79240, type: 2}
+  - {fileID: 2100000, guid: 388f92220ff14b143a99d4860e7f0222, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1882,7 +1882,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5d3a61f1010d2b547b8af96d1ec79240, type: 2}
+  - {fileID: 2100000, guid: 388f92220ff14b143a99d4860e7f0222, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2037,7 +2037,7 @@ MonoBehaviour:
   shadowColor: {r: 0.19215688, g: 0.21960786, b: 0.26666668, a: 1}
   shadowIntensity: 1
   samplingType: 4
-  postProcess: {fileID: 963194231}
+  postProcessStack: {fileID: 0}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
   bvh: {fileID: 963194230}
@@ -2055,7 +2055,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debugRef: 0
   meshParent: {fileID: 1990499560}
-  meshShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
+  meshDataShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
   localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
   globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
@@ -2075,16 +2075,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6b7826363f376c4fbe818d40c8c3d71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  downSampleStep: 7
-  downSampleBlurSize: 5
-  downSampleBlurSigma: 1
-  upSampleBlurSize: 5
-  upSampleBlurSigma: 1
-  useKarisAverage: 0
-  luminanceThreshole: 10
-  bloomIntensity: 0.02
-  debugFlag: 0
-  mipDebugIndex: 0
 --- !u!1 &965520150
 GameObject:
   m_ObjectHideFlags: 0
@@ -3430,7 +3420,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5d3a61f1010d2b547b8af96d1ec79240, type: 2}
+  - {fileID: 2100000, guid: 388f92220ff14b143a99d4860e7f0222, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -4431,7 +4421,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 34da5a376d4564449ad38dab3fa8a0ef, type: 2}
+  - {fileID: 2100000, guid: 388f92220ff14b143a99d4860e7f0222, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

@@ -3327,7 +3327,7 @@ MonoBehaviour:
   shadowColor: {r: 0.19215688, g: 0.21960786, b: 0.26666668, a: 1}
   shadowIntensity: 1
   samplingType: 4
-  postProcess: {fileID: 963194231}
+  postProcessStack: {fileID: 0}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
   bvh: {fileID: 963194230}
@@ -3345,7 +3345,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   debugRef: 0
   meshParent: {fileID: 1990499560}
-  meshShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
+  meshDataShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
   localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
   globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
@@ -3365,16 +3365,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6b7826363f376c4fbe818d40c8c3d71, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  downSampleStep: 7
-  downSampleBlurSize: 5
-  downSampleBlurSigma: 1
-  upSampleBlurSize: 5
-  upSampleBlurSigma: 1
-  useKarisAverage: 0
-  luminanceThreshole: 10
-  bloomIntensity: 0.02
-  debugFlag: 0
-  mipDebugIndex: 0
 --- !u!1 &965520150
 GameObject:
   m_ObjectHideFlags: 0
