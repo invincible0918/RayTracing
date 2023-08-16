@@ -61,20 +61,16 @@ public class BVH : MonoBehaviour
             //}
         }
     }
-    ComputeBuffer materialDataBuffer;
 
+    ComputeBuffer materialDataBuffer;
     MeshBufferContainer container;
 
-
-    public ComputeShader localRadixSortShader;
-    public ComputeShader globalRadixSortShader;
-    public ComputeShader scanShader;
-    public ComputeShader bvhShader;
-
+    ////////////// chapter4_4 //////////////
     public enum DebugDataType
     {
         None,
         AABB,
+        MortonCode,
         BeforeSort,
         AfterSort,
         BVH
@@ -82,6 +78,10 @@ public class BVH : MonoBehaviour
     public DebugDataType debugDataType = DebugDataType.None;
     public int debugDepth = 1;
 
+    public ComputeShader localRadixSortShader;
+    public ComputeShader globalRadixSortShader;
+    public ComputeShader scanShader;
+    public ComputeShader bvhShader;
 
     ComputeBufferSorter<uint, uint> sorter;
     BVHConstructor bvhConstructor;
@@ -120,60 +120,56 @@ public class BVH : MonoBehaviour
         container.bounds,
         meshDataShader);
 
-        // 3. Hi-Z 遮挡剔除
+        //Debug.Log("Before BVH");
+        ////container.GetAllGpuData();
+        ////container.PrintData();
 
+        //// 3. 基数排序Radix Sort，适合并行计算的排序算法
+        //sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
+        //    container.mortonCodeBuffer,
+        //    container.triangleIndexBuffer,
+        //    localRadixSortShader,
+        //    globalRadixSortShader,
+        //    scanShader);
+        //sorter.Sort();
 
-        Debug.Log("Before BVH");
-        //container.GetAllGpuData();
-        //container.PrintData();
+        //container.DistributeMortonCode();
 
-        // 3. 基数排序Radix Sort，适合并行计算的排序算法
-        sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
-            container.mortonCodeBuffer,
-            container.triangleIndexBuffer,
-            localRadixSortShader,
-            globalRadixSortShader,
-            scanShader);
-        sorter.Sort();
+        //// 4. 构造BVH
+        //bvhConstructor = new BVHConstructor(container.trianglesLength,
+        //    container.mortonCodeBuffer,
+        //    container.triangleIndexBuffer,
+        //    container.triangleAABBBuffer,
+        //    container.bvhInternalNodeBuffer,
+        //    container.bvhLeafNodeBuffer,
+        //    container.bvhDataBuffer,
+        //    bvhShader);
 
-        container.DistributeMortonCode();
+        //bvhConstructor.ConstructTree();
+        //bvhConstructor.ConstructBVH();
 
-        // 4. 构造BVH
-        bvhConstructor = new BVHConstructor(container.trianglesLength,
-            container.mortonCodeBuffer,
-            container.triangleIndexBuffer,
-            container.triangleAABBBuffer,
-            container.bvhInternalNodeBuffer,
-            container.bvhLeafNodeBuffer,
-            container.bvhDataBuffer,
-            bvhShader);
+        //Debug.Log("After BVH");
+        ////container.PrintData();
 
-        bvhConstructor.ConstructTree();
-        bvhConstructor.ConstructBVH();
+        ////System.DateTime afterDT = System.DateTime.Now;
+        ////System.TimeSpan ts = afterDT.Subtract(beforeDT);
+        ////Debug.Log("BVH spent: " + ts.TotalMilliseconds);
 
-        Debug.Log("After BVH");
-        container.GetAllGpuData();
-        container.PrintData();
+        ////Debug.Log("TriangleAABB stride: " + container.TriangleAABB.stride);
+        ////Debug.Log("TriangleAABB count: " + container.TriangleAABB.count);
+        ////AABB[] aabbs = new AABB[container.TriangleAABB.count];
+        ////container.TriangleAABB.GetData(aabbs);
+        ////for (int i = 0; i < container.TriangleAABB.count; ++i)
+        ////    Debug.Log(aabbs[i].ToString());
 
-        //System.DateTime afterDT = System.DateTime.Now;
-        //System.TimeSpan ts = afterDT.Subtract(beforeDT);
-        //Debug.Log("BVH spent: " + ts.TotalMilliseconds);
-
-        //Debug.Log("TriangleAABB stride: " + container.TriangleAABB.stride);
-        //Debug.Log("TriangleAABB count: " + container.TriangleAABB.count);
-        //AABB[] aabbs = new AABB[container.TriangleAABB.count];
-        //container.TriangleAABB.GetData(aabbs);
-        //for (int i = 0; i < container.TriangleAABB.count; ++i)
-        //    Debug.Log(aabbs[i].ToString());
-
-        // 6. 开始渲染
-        rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "triangleAABBBuffer", container.triangleAABBBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "bvhDataBuffer", container.bvhDataBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "triangleDataBuffer", container.triangleDataBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
+        //// 6. 开始渲染
+        //rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "triangleAABBBuffer", container.triangleAABBBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "bvhDataBuffer", container.bvhDataBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "triangleDataBuffer", container.triangleDataBuffer);
+        //rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
     }
 
     // 1. 构造 AABB
@@ -305,6 +301,7 @@ public class BVH : MonoBehaviour
         bvhConstructor?.Dispose();
     }
 
+    ////////////// chapter4_4 //////////////
     #region Debug
     private void DrawAABB(AABB aabb, float scale = 1.0f)
     {
@@ -316,13 +313,34 @@ public class BVH : MonoBehaviour
         switch (debugDataType)
         {
             case DebugDataType.AABB:
+            case DebugDataType.MortonCode:
                 {
-                    Gizmos.color = Color.green;
 
                     AABB[] aabbs = new AABB[container.trianglesLength];
                     container.triangleAABBBuffer.GetData(aabbs);
-                    for (int i = 0; i < container.trianglesLength; i++)
-                        DrawAABB(aabbs[i]);
+
+                    if (debugDataType == DebugDataType.MortonCode)
+                    {
+                        uint[] mortonCodes = new uint[container.trianglesLength];
+                        container.mortonCodeBuffer.GetData(mortonCodes);
+
+                        for (int i = 0; i < container.trianglesLength; i++)
+                        {
+                            Gizmos.color = Color.green;
+                            DrawAABB(aabbs[i]);
+                            
+                            Gizmos.color = Color.white;
+                            UnityEditor.Handles.Label((aabbs[i].min + aabbs[i].max) / 2, mortonCodes[i].ToString());
+                        }
+                    }
+                    else
+                    {
+                        Gizmos.color = Color.green;
+
+                        for (int i = 0; i < container.trianglesLength; i++)
+                            DrawAABB(aabbs[i]);
+                    }
+
                 }
                 break;
             case DebugDataType.BeforeSort:

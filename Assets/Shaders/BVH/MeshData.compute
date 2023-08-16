@@ -32,6 +32,7 @@ float3 encompassingAABBMin;
 float3 encompassingAABBMax;
 RWStructuredBuffer<uint> mortonCodeBuffer;
 
+// 将一个10位的整数扩展为30位, 每个位后插入2个零。
 uint ExpandBits(uint v)
 {
     v = (v * 0x00010001u) & 0xFF0000FFu;
@@ -41,6 +42,7 @@ uint ExpandBits(uint v)
     return v;
 }
 
+//计算一个30位的莫顿码, 给定三维点位于单位立方体[0,1]内。
 uint MortonCode(float3 v)
 {
     v.x = min(max(v.x * 1024.0f, 0.0f), 1023.0f);

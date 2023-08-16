@@ -69,7 +69,7 @@ public class MeshBufferContainer/* : IDisposable*/
         {
             min = Whole.min,
             max = Whole.max
-        };// 不要使用真实的mesh _bounds，因为数值太小了，mesh._bounds;
+        };// 不要使用真实的mesh bounds，因为数值太小了，mesh.bounds;
         _trianglesLength = (uint)mesh.triangles.Length / 3;
 
         _indexBuffer = mesh.GetIndexBuffer();

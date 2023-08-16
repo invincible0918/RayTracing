@@ -43,6 +43,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
         ////////////// chapter2_1 //////////////
         //RayHit hit = BruteForceRayTrace(ray);
+        ////////////// chapter4_3 //////////////
 #ifdef BVH
         RayHit hit = BVHTrace(ray);
 #else
