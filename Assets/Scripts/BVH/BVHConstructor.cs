@@ -54,7 +54,7 @@ public class BVHConstructor : IDisposable
         _bvhShader.SetBuffer(_bvhConstructionKernel, "leafNodes", _leafNodes);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "triangleAABB", _triangleAABB);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "sortedTriangleIndices", _sortedTriangleIndices);
-        _bvhShader.SetBuffer(_bvhConstructionKernel, "atomicsData", _atomics.DeviceBuffer);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "atomicsData", _atomics.computeBuffer);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "BVHData", _bvhData);
     }
 

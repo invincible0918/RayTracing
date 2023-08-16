@@ -4,73 +4,41 @@ using UnityEngine;
 
 public class DataBuffer<T> : IDisposable where T : struct
 {
-    public ComputeBuffer DeviceBuffer => deviceBuffer;
-    public T[] LocalBuffer => localBuffer;
-
-    private readonly ComputeBuffer deviceBuffer;
-    private readonly T[] localBuffer;
-    private bool synced;
+    public ComputeBuffer computeBuffer;
 
     public DataBuffer(int size, T initialValue) : this(size)
     {
+        T[] array = new T[size];
         for (int i = 0; i < size; i++)
-        {
-            localBuffer[i] = initialValue;
-        }
+            array[i] = initialValue;
 
-        deviceBuffer.SetData(localBuffer);
-        synced = true;
+        computeBuffer.SetData(array);
     }
 
     public DataBuffer(int size)
     {
-        deviceBuffer = new ComputeBuffer(size, Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
-        localBuffer = new T[size];
-        synced = false;
+        computeBuffer = new ComputeBuffer(size, Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
     }
 
-    public T this[uint i]
+    public void SetData(T[] array)
     {
-        get
-        {
-            if (!synced)
-            {
-                GetData();
-            }
-
-            return localBuffer[i];
-        }
-        set
-        {
-            localBuffer[i] = value;
-            synced = false;
-        }
+        computeBuffer.SetData(array);
     }
 
-    public void GetData()
+    public void GetData(out T[] array)
     {
-        deviceBuffer.GetData(localBuffer);
-        synced = true;
-    }
-
-    public void Sync()
-    {
-        deviceBuffer.SetData(localBuffer);
-        synced = true;
+        array = new T[computeBuffer.count];
+        computeBuffer.GetData(array);
     }
 
     public override string ToString()
     {
-        if (!synced)
-        {
-            GetData();
-        }
-
-        return Utils.ArrayToString(localBuffer).ToString();
+        GetData(out T[] array);
+        return Utils.ArrayToString(array).ToString();
     }
 
     public void Dispose()
     {
-        deviceBuffer.Release();
+        computeBuffer.Release();
     }
 }

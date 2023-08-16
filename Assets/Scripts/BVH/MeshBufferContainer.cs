@@ -15,45 +15,34 @@ public class MeshBufferContainer/* : IDisposable*/
         max = Vector3.one * size
     };
 
-    public ComputeBuffer Keys => keysBuffer.DeviceBuffer;
-    public ComputeBuffer TriangleIndex => triangleIndexBuffer.DeviceBuffer;
-    public ComputeBuffer TriangleData => triangleDataBuffer.DeviceBuffer;
-    public ComputeBuffer TriangleAABB => triangleAABBBuffer.DeviceBuffer;
-    public ComputeBuffer BvhData => bvhDataBuffer.DeviceBuffer;
-    public ComputeBuffer BvhLeafNode => bvhLeafNodesBuffer.DeviceBuffer;
-    public ComputeBuffer BvhInternalNode => bvhInternalNodesBuffer.DeviceBuffer;
-    public uint[] KeysData => keysBuffer.LocalBuffer;
-    public uint[] ValuesData => triangleIndexBuffer.LocalBuffer;
-    public AABB[] TriangleAABBLocalData => triangleAABBBuffer.LocalBuffer;
-    public AABB[] BVHLocalData => bvhDataBuffer.LocalBuffer;
-    public LeafNode[] BvhLeafNodeLocalData => bvhLeafNodesBuffer.LocalBuffer;
-    public InternalNode[] BvhInternalNodeLocalData => bvhInternalNodesBuffer.LocalBuffer;
-    public uint TrianglesLength => trianglesLength;
+    public Bounds bounds => _bounds;
+    public uint trianglesLength => _trianglesLength;
+    public ComputeBuffer mortonCodeBuffer => _mortonCodeBuffer.computeBuffer;
+    public ComputeBuffer triangleIndexBuffer => _triangleIndexBuffer.computeBuffer;
+    public ComputeBuffer triangleDataBuffer => _triangleDataBuffer.computeBuffer;
+    public ComputeBuffer triangleAABBBuffer => _triangleAABBBuffer.computeBuffer;
+    public ComputeBuffer bvhDataBuffer => _bvhDataBuffer.computeBuffer;
+    public ComputeBuffer bvhLeafNodeBuffer => _bvhLeafNodeBuffer.computeBuffer;
+    public ComputeBuffer bvhInternalNodeBuffer => _bvhInternalNodeBuffer.computeBuffer;
+    public GraphicsBuffer indexBuffer => _indexBuffer;
+    public GraphicsBuffer vertexBuffer => _vertexBuffer;
+    public ComputeBuffer materialIndexBuffer => _materialIndexBuffer.computeBuffer;
+    public ComputeBuffer shadowIndexBuffer => _shadowIndexBuffer.computeBuffer;
 
-    public GraphicsBuffer IndexBuffer => indexBuffer;
-    public GraphicsBuffer VertexBuffer => vertexBuffer;
-    public ComputeBuffer MaterialIndexBuffer => materialIndexBuffer.DeviceBuffer;
-    public ComputeBuffer ShadowIndexBuffer => shadowIndexBuffer.DeviceBuffer;
+    private uint _trianglesLength;
+    private Bounds _bounds;
+    private DataBuffer<uint> _mortonCodeBuffer;
+    private DataBuffer<uint> _triangleIndexBuffer;
+    private DataBuffer<Triangle> _triangleDataBuffer;
+    private DataBuffer<AABB> _triangleAABBBuffer;
+    private DataBuffer<AABB> _bvhDataBuffer;
+    private DataBuffer<LeafNode> _bvhLeafNodeBuffer;
+    private DataBuffer<InternalNode> _bvhInternalNodeBuffer;
+    private GraphicsBuffer _indexBuffer;
+    private GraphicsBuffer _vertexBuffer;
+    private DataBuffer<uint> _materialIndexBuffer;
+    private DataBuffer<Vector2Int> _shadowIndexBuffer;
 
-    public Bounds Bounds => _bounds;
-
-    readonly uint trianglesLength;
-
-    readonly DataBuffer<uint> keysBuffer;
-    readonly DataBuffer<uint> triangleIndexBuffer;
-    readonly DataBuffer<Triangle> triangleDataBuffer;
-    readonly DataBuffer<AABB> triangleAABBBuffer;
-
-    readonly DataBuffer<AABB> bvhDataBuffer;
-    readonly DataBuffer<LeafNode> bvhLeafNodesBuffer;
-    readonly DataBuffer<InternalNode> bvhInternalNodesBuffer;
-
-    readonly GraphicsBuffer indexBuffer;
-    readonly GraphicsBuffer vertexBuffer;
-    readonly DataBuffer<uint> materialIndexBuffer;
-    readonly DataBuffer<Vector2Int> shadowIndexBuffer;
-
-    private readonly Bounds _bounds;
 
     public MeshBufferContainer(Mesh mesh, List<uint> materialIndices, List<Vector2Int> shadowIndices) // TODO multiple meshes
     {
@@ -67,79 +56,75 @@ public class MeshBufferContainer/* : IDisposable*/
             Debug.LogError("AABB struct size = " + Marshal.SizeOf(typeof(AABB)) + ", not 32");
         }
 
-        keysBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
-        triangleIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
-        triangleDataBuffer = new DataBuffer<Triangle>(Constants.DATA_ARRAY_COUNT, Triangle.NullTriangle);
-        triangleAABBBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT, AABB.NullAABB);
+        _mortonCodeBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        _triangleIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        _triangleDataBuffer = new DataBuffer<Triangle>(Constants.DATA_ARRAY_COUNT, Triangle.NullTriangle);
+        _triangleAABBBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT, AABB.NullAABB);
 
-        bvhDataBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
-        bvhLeafNodesBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT, LeafNode.NullLeaf);
-        bvhInternalNodesBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT, InternalNode.NullLeaf);
+        _bvhDataBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
+        _bvhLeafNodeBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT, LeafNode.NullLeaf);
+        _bvhInternalNodeBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT, InternalNode.NullLeaf);
 
         _bounds = new Bounds
         {
             min = Whole.min,
             max = Whole.max
-        };// ≤ª“™ π”√’Ê µµƒmesh bounds£¨“ÚŒ™ ˝÷µÃ´–°¡À£¨mesh.bounds;
-        trianglesLength = (uint)mesh.triangles.Length / 3;
+        };// ‰∏çË¶Å‰ΩøÁî®ÁúüÂÆûÁöÑmesh _boundsÔºåÂõ†‰∏∫Êï∞ÂÄºÂ§™Â∞è‰∫ÜÔºåmesh._bounds;
+        _trianglesLength = (uint)mesh.triangles.Length / 3;
 
-        indexBuffer = mesh.GetIndexBuffer();
-        vertexBuffer = mesh.GetVertexBuffer(0);
+        _indexBuffer = mesh.GetIndexBuffer();
+        _vertexBuffer = mesh.GetVertexBuffer(0);
 
-        // ’‚¿Ô¥Ê÷¸µƒ «√ø“ª∏ˆ»˝Ω«√Êµƒ≤ƒ÷ id
-        materialIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
-        for (uint i = 0; i < materialIndices.Count; ++i)
-            materialIndexBuffer[i] = materialIndices[(int)i];
-        materialIndexBuffer.Sync();
+        // ËøôÈáåÂ≠òË¥ÆÁöÑÊòØÊØè‰∏Ä‰∏™‰∏âËßíÈù¢ÁöÑÊùêË¥®id
+        _materialIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        _materialIndexBuffer.SetData(materialIndices.ToArray());
 
-        // ’‚¿Ô¥Ê÷¸µƒ «√ø“ª∏ˆ»˝Ω«√Êµƒ“ı”∞ Ù–‘
-        shadowIndexBuffer = new DataBuffer<Vector2Int>(Constants.DATA_ARRAY_COUNT, Vector2Int.one);
-        for (uint i = 0; i < shadowIndices.Count; ++i)
-            shadowIndexBuffer[i] = shadowIndices[(int)i];
-        shadowIndexBuffer.Sync();
+        // ËøôÈáåÂ≠òË¥ÆÁöÑÊòØÊØè‰∏Ä‰∏™‰∏âËßíÈù¢ÁöÑÈò¥ÂΩ±Â±ûÊÄß
+        _shadowIndexBuffer = new DataBuffer<Vector2Int>(Constants.DATA_ARRAY_COUNT, Vector2Int.one);
+        _shadowIndexBuffer.SetData(shadowIndices.ToArray());
     }
 
-    public void DistributeKeys()
+    public void DistributeMortonCode()
     {
-        keysBuffer.GetData();
+        _mortonCodeBuffer.GetData(out uint[] values);
         
         uint newCurrentValue = 0;
-        uint oldCurrentValue = keysBuffer.LocalBuffer[0];
-        keysBuffer.LocalBuffer[0] = newCurrentValue;
-        for (uint i = 1; i < trianglesLength; i++)
+        uint oldCurrentValue = values[0];
+        values[0] = newCurrentValue;
+        for (uint i = 1; i < _trianglesLength; i++)
         {
-            newCurrentValue += Math.Max(keysBuffer.LocalBuffer[i] - oldCurrentValue, 1);
-            oldCurrentValue = keysBuffer.LocalBuffer[i];
-            keysBuffer.LocalBuffer[i] = newCurrentValue;
+            newCurrentValue += Math.Max(values[i] - oldCurrentValue, 1);
+            oldCurrentValue = values[i];
+            values[i] = newCurrentValue;
         }
-        
-        keysBuffer.Sync();
+
+        _mortonCodeBuffer.SetData(values);
     }
 
     public void GetAllGpuData()
     {
-        keysBuffer.GetData();
-        triangleIndexBuffer.GetData();
-        triangleDataBuffer.GetData();
-        triangleAABBBuffer.GetData();
-        bvhDataBuffer.GetData();
-        bvhLeafNodesBuffer.GetData();
-        bvhInternalNodesBuffer.GetData();
-        materialIndexBuffer.GetData();
-        shadowIndexBuffer.GetData();
+        //keysBuffer.GetData();
+        //_triangleIndexBuffer.GetData();
+        //_triangleDataBuffer.GetData();
+        //_triangleAABBBuffer.GetData();
+        //_bvhDataBuffer.GetData();
+        //_bvhLeafNodeBuffer.GetData();
+        //_bvhInternalNodeBuffer.GetData();
+        //_materialIndexBuffer.GetData();
+        //_shadowIndexBuffer.GetData();
 
         // debug
-        //for (uint i = 0; i < trianglesLength; i++)
+        //for (uint i = 0; i < _trianglesLength; i++)
         //{
-        //    if (bvhLeafNodesBuffer[i].index == 0xFFFFFFFF && bvhLeafNodesBuffer[i].parent == 0xFFFFFFFF)
+        //    if (_bvhLeafNodeBuffer[i].index == 0xFFFFFFFF && _bvhLeafNodeBuffer[i].parent == 0xFFFFFFFF)
         //    {
         //        Debug.LogErrorFormat("LEAF CORRUPTED {0}", i);
         //    }
         //}
 
-        //for (uint i = 0; i < trianglesLength - 1; i++)
+        //for (uint i = 0; i < _trianglesLength - 1; i++)
         //{
-        //    if (bvhInternalNodesBuffer[i].index == 0xFFFFFFFF && bvhInternalNodesBuffer[i].parent == 0xFFFFFFFF)
+        //    if (_bvhInternalNodeBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodeBuffer[i].parent == 0xFFFFFFFF)
         //    {
         //        Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
         //    }
@@ -148,31 +133,31 @@ public class MeshBufferContainer/* : IDisposable*/
 
     public void PrintData()
     {
-        //Debug.Log("triangleIndexBuffer: " + triangleIndexBuffer);
-        //Debug.Log("triangleAABBBuffer: " + triangleAABBBuffer);
-        //Debug.Log("bvhInternalNodesBuffer: " + bvhInternalNodesBuffer);
-        //Debug.Log("bvhLeafNodesBuffer: " + bvhLeafNodesBuffer);
-        //Debug.Log("bvhDataBuffer: " + bvhDataBuffer);
-        //Debug.Log("triangleDataBuffer: " + triangleDataBuffer);
+        //Debug.Log("_triangleIndexBuffer: " + _triangleIndexBuffer);
+        //Debug.Log("_triangleAABBBuffer: " + _triangleAABBBuffer);
+        //Debug.Log("_bvhInternalNodeBuffer: " + _bvhInternalNodeBuffer);
+        //Debug.Log("_bvhLeafNodeBuffer: " + _bvhLeafNodeBuffer);
+        //Debug.Log("_bvhDataBuffer: " + _bvhDataBuffer);
+        //Debug.Log("_triangleDataBuffer: " + _triangleDataBuffer);
         //Debug.Log("keysBuffer: " + keysBuffer);
-        //Debug.Log("materialIndexBuffer: " + materialIndexBuffer);
-        //Debug.Log("shadowIndexBuffer: " + shadowIndexBuffer);
+        //Debug.Log("_materialIndexBuffer: " + _materialIndexBuffer);
+        //Debug.Log("_shadowIndexBuffer: " + _shadowIndexBuffer);
     }
 
 
     public void Dispose()
     {
-        keysBuffer.Dispose();
-        triangleIndexBuffer.Dispose();
-        triangleDataBuffer.Dispose();
-        triangleAABBBuffer.Dispose();
-        bvhDataBuffer.Dispose();
-        bvhLeafNodesBuffer.Dispose();
-        bvhInternalNodesBuffer.Dispose();
+        _mortonCodeBuffer.Dispose();
+        _triangleIndexBuffer.Dispose();
+        _triangleDataBuffer.Dispose();
+        _triangleAABBBuffer.Dispose();
+        _bvhDataBuffer.Dispose();
+        _bvhLeafNodeBuffer.Dispose();
+        _bvhInternalNodeBuffer.Dispose();
 
-        indexBuffer.Dispose();
-        vertexBuffer.Dispose();
-        materialIndexBuffer.Dispose();
-        shadowIndexBuffer.Dispose();
+        _indexBuffer.Dispose();
+        _vertexBuffer.Dispose();
+        _materialIndexBuffer.Dispose();
+        _shadowIndexBuffer.Dispose();
     }
 }

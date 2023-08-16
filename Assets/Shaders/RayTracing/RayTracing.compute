@@ -7,7 +7,7 @@
 #include "BruteForceRayTracing.cginc"
 #include "Shade.cginc"
 //////////////// chapter4_3 //////////////
-//#include "./Assets/Shaders/BVH/BVHTracing.cginc"
+#include "./Assets/Shaders/BVH/BVHTracing.cginc"
 
 ////////////// chapter2_1 //////////////
 RWTexture2D<float4> destination;
@@ -38,25 +38,25 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     float3 col = float3(0, 0, 0);
 
-//    for (int i = 0; i < MAX_BOUNCE; i++)
-//    {
+    for (int i = 0; i < MAX_BOUNCE; i++)
+    {
 
-//        ////////////// chapter2_1 //////////////
-//        //RayHit hit = BruteForceRayTrace(ray);
-//#ifdef BVH
-//        RayHit hit = BVHTrace(ray);
-//#else
-//        RayHit hit = BruteForceRayTrace(ray);
-//#endif
+        ////////////// chapter2_1 //////////////
+        //RayHit hit = BruteForceRayTrace(ray);
+#ifdef BVH
+        RayHit hit = BVHTrace(ray);
+#else
+        RayHit hit = BruteForceRayTrace(ray);
+#endif
 
-//        //col += Shade(hit, ray);
-//        // chapter3_1
-//        col += ray.energy * Shade(hit, ray);
+        //col += Shade(hit, ray);
+        // chapter3_1
+        col += ray.energy * Shade(hit, ray);
 
 
-//        if (!any(ray.energy))   // any(x): x!=0 return true
-//            break;
-//    }
+        if (!any(ray.energy))   // any(x): x!=0 return true
+            break;
+    }
 
     destination[id.xy] = float4(col, 1);
 }

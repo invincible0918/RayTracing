@@ -66,25 +66,25 @@ public class BVH : MonoBehaviour
     MeshBufferContainer container;
 
 
-    //public ComputeShader localRadixSortShader;
-    //public ComputeShader globalRadixSortShader;
-    //public ComputeShader scanShader;
-    //public ComputeShader bvhShader;
+    public ComputeShader localRadixSortShader;
+    public ComputeShader globalRadixSortShader;
+    public ComputeShader scanShader;
+    public ComputeShader bvhShader;
 
-    //public enum DebugDataType
-    //{
-    //    None,
-    //    AABB,
-    //    BeforeSort,
-    //    AfterSort,
-    //    BVH
-    //}
-    //public DebugDataType debugDataType = DebugDataType.None;
-    //public int debugDepth = 1;
+    public enum DebugDataType
+    {
+        None,
+        AABB,
+        BeforeSort,
+        AfterSort,
+        BVH
+    }
+    public DebugDataType debugDataType = DebugDataType.None;
+    public int debugDepth = 1;
 
 
-    //ComputeBufferSorter<uint, uint> _sorter;
-    //BVHConstructor _bvhConstructor;
+    ComputeBufferSorter<uint, uint> sorter;
+    BVHConstructor bvhConstructor;
 
     ////////////// chapter4_3 //////////////
     public void Init(ComputeShader shader, int handle)
@@ -106,76 +106,77 @@ public class BVH : MonoBehaviour
 
         container = new MeshBufferContainer(mesh, materialIndices, shadowIndices);
 
-        //// 2. 构造 AABB, Morton Code
-        //MeshData.Calculate(_container.TrianglesLength,
-        //_container.VertexBuffer,
-        //_container.IndexBuffer,
-        //_container.Keys,
-        //_container.TriangleIndex,
-        //_container.TriangleAABB,
-        //_container.TriangleData,
-        //_container.MaterialIndexBuffer,
-        //_container.ShadowIndexBuffer,
-        //_container.Bounds,
-        //meshDataShader);
+        ////////////// chapter4_4 //////////////
+        // 构造 AABB, Morton Code
+        MeshData.Calculate(container.trianglesLength,
+        container.vertexBuffer,
+        container.indexBuffer,
+        container.mortonCodeBuffer,
+        container.triangleIndexBuffer,
+        container.triangleAABBBuffer,
+        container.triangleDataBuffer,
+        container.materialIndexBuffer,
+        container.shadowIndexBuffer,
+        container.bounds,
+        meshDataShader);
 
-        //// 3. Hi-Z 遮挡剔除
+        // 3. Hi-Z 遮挡剔除
 
 
-        //Debug.Log("Before BVH");
-        ////_container.GetAllGpuData();
-        ////_container.PrintData();
+        Debug.Log("Before BVH");
+        //container.GetAllGpuData();
+        //container.PrintData();
 
-        //// 3. 基数排序Radix Sort，适合并行计算的排序算法
-        //_sorter = new ComputeBufferSorter<uint, uint>(_container.TrianglesLength, 
-        //    _container.Keys, 
-        //    _container.TriangleIndex,
-        //    localRadixSortShader,
-        //    globalRadixSortShader,
-        //    scanShader);
-        //_sorter.Sort();
+        // 3. 基数排序Radix Sort，适合并行计算的排序算法
+        sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
+            container.mortonCodeBuffer,
+            container.triangleIndexBuffer,
+            localRadixSortShader,
+            globalRadixSortShader,
+            scanShader);
+        sorter.Sort();
 
-        //_container.DistributeKeys();
+        container.DistributeMortonCode();
 
-        //// 4. 构造BVH
-        //_bvhConstructor = new BVHConstructor(_container.TrianglesLength,
-        //    _container.Keys,
-        //    _container.TriangleIndex,
-        //    _container.TriangleAABB,
-        //    _container.BvhInternalNode,
-        //    _container.BvhLeafNode,
-        //    _container.BvhData,
-        //    bvhShader);
+        // 4. 构造BVH
+        bvhConstructor = new BVHConstructor(container.trianglesLength,
+            container.mortonCodeBuffer,
+            container.triangleIndexBuffer,
+            container.triangleAABBBuffer,
+            container.bvhInternalNodeBuffer,
+            container.bvhLeafNodeBuffer,
+            container.bvhDataBuffer,
+            bvhShader);
 
-        //_bvhConstructor.ConstructTree();
-        //_bvhConstructor.ConstructBVH();
+        bvhConstructor.ConstructTree();
+        bvhConstructor.ConstructBVH();
 
-        //Debug.Log("After BVH");
-        //_container.GetAllGpuData();
-        //_container.PrintData();
+        Debug.Log("After BVH");
+        container.GetAllGpuData();
+        container.PrintData();
 
         //System.DateTime afterDT = System.DateTime.Now;
         //System.TimeSpan ts = afterDT.Subtract(beforeDT);
         //Debug.Log("BVH spent: " + ts.TotalMilliseconds);
 
-        ////Debug.Log("TriangleAABB stride: " + _container.TriangleAABB.stride);
-        ////Debug.Log("TriangleAABB count: " + _container.TriangleAABB.count);
-        ////AABB[] aabbs = new AABB[_container.TriangleAABB.count];
-        ////_container.TriangleAABB.GetData(aabbs);
-        ////for (int i = 0; i < _container.TriangleAABB.count; ++i)
-        ////    Debug.Log(aabbs[i].ToString());
+        //Debug.Log("TriangleAABB stride: " + container.TriangleAABB.stride);
+        //Debug.Log("TriangleAABB count: " + container.TriangleAABB.count);
+        //AABB[] aabbs = new AABB[container.TriangleAABB.count];
+        //container.TriangleAABB.GetData(aabbs);
+        //for (int i = 0; i < container.TriangleAABB.count; ++i)
+        //    Debug.Log(aabbs[i].ToString());
 
-        //// 5. 收集材质球
-        //InitMaterialData(materials);
+        // 5. 收集材质球
+        InitMaterialData(materials);
 
-        //// 6. 开始渲染
-        //rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndices", _container.TriangleIndex);
-        //rayTracingShader.SetBuffer(kernelHandle, "triangleAABB", _container.TriangleAABB);
-        //rayTracingShader.SetBuffer(kernelHandle, "internalNodes", _container.BvhInternalNode);
-        //rayTracingShader.SetBuffer(kernelHandle, "leafNodes", _container.BvhLeafNode);
-        //rayTracingShader.SetBuffer(kernelHandle, "bvhData", _container.BvhData);
-        //rayTracingShader.SetBuffer(kernelHandle, "triangleData", _container.TriangleData);
-        //rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
+        // 6. 开始渲染
+        rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndices", container.triangleIndexBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "triangleAABB", container.triangleAABBBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "internalNodes", container.bvhInternalNodeBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "leafNodes", container.bvhLeafNodeBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "bvhData", container.bvhDataBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "triangleData", container.triangleDataBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
     }
 
     // 1. 构造 AABB
@@ -298,11 +299,13 @@ public class BVH : MonoBehaviour
 
     private void OnDestroy()
     {
+        ////////////// chapter4_3 //////////////
         materialDataBuffer?.Dispose();
+        container?.Dispose();
 
-        //_sorter?.Dispose();
-        //_container?.Dispose();
-        //_bvhConstructor?.Dispose();
+        ////////////// chapter4_4 //////////////
+        sorter?.Dispose();
+        bvhConstructor?.Dispose();
     }
 
     #region Debug
@@ -313,164 +316,168 @@ public class BVH : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        //switch (debugDataType)
-        //{
-        //    case DebugDataType.AABB:
-        //        {
-        //            Gizmos.color = Color.green;
+        switch (debugDataType)
+        {
+            case DebugDataType.AABB:
+                {
+                    Gizmos.color = Color.green;
 
-        //            for (int i = 0; i < _container.TrianglesLength; i++)
-        //            {
-        //                AABB aabb = _container.TriangleAABBLocalData[i];
-        //                DrawAABB(aabb);
-        //            }
-        //        }
-        //        break;
-        //    case DebugDataType.BeforeSort:
-        //    case DebugDataType.AfterSort:
-        //        {
-        //            MeshVertex[] vertices = new MeshVertex[_container.VertexBuffer.count];
-        //            _container.VertexBuffer.GetData(vertices);
-        //            int[] triangles = new int[_container.IndexBuffer.count];
-        //            _container.IndexBuffer.GetData(triangles);
+                    AABB[] aabbs = new AABB[container.trianglesLength];
+                    container.triangleAABBBuffer.GetData(aabbs);
+                    for (int i = 0; i < container.trianglesLength; i++)
+                        DrawAABB(aabbs[i]);
+                }
+                break;
+            case DebugDataType.BeforeSort:
+            case DebugDataType.AfterSort:
+                {
+                    MeshVertex[] vertices = new MeshVertex[container.vertexBuffer.count];
+                    container.vertexBuffer.GetData(vertices);
+                    int[] triangles = new int[container.indexBuffer.count];
+                    container.indexBuffer.GetData(triangles);
 
-        //            List<int[]> values = new List<int[]>();
-        //            for (int i = 0; i < triangles.Length; i += 3)
-        //                values.Add(new int[3] { triangles[i], triangles[i + 1], triangles[i + 2] });
+                    List<int[]> values = new List<int[]>();
+                    for (int i = 0; i < triangles.Length; i += 3)
+                        values.Add(new int[3] { triangles[i], triangles[i + 1], triangles[i + 2] });
 
-        //            Vector3 start = Vector3.zero;
-        //            if (debugDataType == DebugDataType.BeforeSort)
-        //            {
-        //                for (int i = 0; i < values.Count; ++i)
-        //                {
-        //                    int i0 = values[i][0];
-        //                    int i1 = values[i][1];
-        //                    int i2 = values[i][2];
+                    Vector3 start = Vector3.zero;
+                    if (debugDataType == DebugDataType.BeforeSort)
+                    {
+                        for (int i = 0; i < values.Count; ++i)
+                        {
+                            int i0 = values[i][0];
+                            int i1 = values[i][1];
+                            int i2 = values[i][2];
 
-        //                    Vector3 v0 = vertices[i0].position;
-        //                    Vector3 v1 = vertices[i1].position;
-        //                    Vector3 v2 = vertices[i2].position;
-        //                    Vector3 center = (v0 + v1 + v2) / 3;
+                            Vector3 v0 = vertices[i0].position;
+                            Vector3 v1 = vertices[i1].position;
+                            Vector3 v2 = vertices[i2].position;
+                            Vector3 center = (v0 + v1 + v2) / 3;
 
-        //                    Gizmos.DrawLine(center, start);
-        //                    start = center;
+                            Gizmos.DrawLine(center, start);
+                            start = center;
 
-        //                    //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
-        //                    //{
-        //                    //    UnityEditor.Handles.Label(center, i.ToString());
-        //                    //}
-        //                }
-        //            }
-        //            else
-        //            {
-        //                uint[] sortedValues = _container.ValuesData;
+                            //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
+                            //{
+                            //    UnityEditor.Handles.Label(center, i.ToString());
+                            //}
+                        }
+                    }
+                    else
+                    {
+                        uint[] sortedValues = new uint[container.triangleIndexBuffer.count];
+                        container.triangleIndexBuffer.GetData(sortedValues);
 
-        //                for (int i = 0; i < sortedValues.Length; ++i)
-        //                {
-        //                    int i0 = values[(int)sortedValues[i]][0];
-        //                    int i1 = values[(int)sortedValues[i]][1];
-        //                    int i2 = values[(int)sortedValues[i]][2];
+                        for (int i = 0; i < sortedValues.Length; ++i)
+                        {
+                            int i0 = values[(int)sortedValues[i]][0];
+                            int i1 = values[(int)sortedValues[i]][1];
+                            int i2 = values[(int)sortedValues[i]][2];
 
-        //                    Vector3 v0 = vertices[i0].position;
-        //                    Vector3 v1 = vertices[i1].position;
-        //                    Vector3 v2 = vertices[i2].position;
-        //                    Vector3 center = (v0 + v1 + v2) / 3;
+                            Vector3 v0 = vertices[i0].position;
+                            Vector3 v1 = vertices[i1].position;
+                            Vector3 v2 = vertices[i2].position;
+                            Vector3 center = (v0 + v1 + v2) / 3;
 
-        //                    Gizmos.DrawLine(center, start);
-        //                    start = center;
-        //                    //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
-        //                    //{
-        //                    //    UnityEditor.Handles.Label(center, i.ToString());
-        //                    //}
-        //                }
-        //                //after = string.Empty;
-        //                //foreach (uint code in sortedValues)
-        //                //    after += code.ToString() + ", ";
-        //                //Debug.Log("after value: " + after);
-        //            }
-        //        }
-        //        break;
-        //    case DebugDataType.BVH:
-        //        {
-        //            uint[] stack = new uint[64];
-        //            uint currentStackIndex = 0;
-        //            stack[currentStackIndex] = 0;
-        //            currentStackIndex = 1;
+                            Gizmos.DrawLine(center, start);
+                            start = center;
+                            //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
+                            //{
+                            //    UnityEditor.Handles.Label(center, i.ToString());
+                            //}
+                        }
+                        //after = string.Empty;
+                        //foreach (uint code in sortedValues)
+                        //    after += code.ToString() + ", ";
+                        //Debug.Log("after value: " + after);
+                    }
+                }
+                break;
+            case DebugDataType.BVH:
+                {
+                    uint[] stack = new uint[64];
+                    uint currentStackIndex = 0;
+                    stack[currentStackIndex] = 0;
+                    currentStackIndex = 1;
 
-        //            int depthLeft = 0;
-        //            int depthRight = 0;
-        //            int depthMax = 10;
+                    int depthLeft = 0;
+                    int depthRight = 0;
+                    int depthMax = 10;
 
-        //            while (currentStackIndex != 0)
-        //            {
-        //                currentStackIndex--;
-        //                uint index = stack[currentStackIndex];
-        //                InternalNode internalNode = _container.BvhInternalNodeLocalData[index];
+                    InternalNode[] internalNodes = new InternalNode[container.bvhInternalNodeBuffer.count];
+                    container.bvhInternalNodeBuffer.GetData(internalNodes);
+                    
+                    AABB[] aabbs = new AABB[container.bvhDataBuffer.count];
+                    container.bvhDataBuffer.GetData(aabbs);
+                    while (currentStackIndex != 0)
+                    {
+                        currentStackIndex--;
+                        uint index = stack[currentStackIndex];
+                        InternalNode internalNode = internalNodes[index];
 
-        //                uint leftIndex = internalNode.leftNode;
-        //                uint leftType = internalNode.leftNodeType;
+                        uint leftIndex = internalNode.leftNode;
+                        uint leftType = internalNode.leftNodeType;
 
-        //                if (leftType == 0) // INTERNAL_NODE
-        //                {
-        //                    stack[currentStackIndex] = leftIndex;
-        //                    currentStackIndex++;
+                        if (leftType == 0) // INTERNAL_NODE
+                        {
+                            stack[currentStackIndex] = leftIndex;
+                            currentStackIndex++;
 
-        //                    AABB leftAABB = _container.BVHLocalData[leftIndex];
-        //                    Gizmos.color = Color.Lerp(Color.red * 0.25f, Color.red, (float)depthLeft / depthMax);
-                            
-        //                    if (depthLeft < debugDepth)
-        //                        DrawAABB(leftAABB);
+                            AABB leftAABB = aabbs[leftIndex];
+                            Gizmos.color = Color.Lerp(Color.red * 0.25f, Color.red, (float)depthLeft / depthMax);
 
-        //                    depthLeft += 1;
+                            if (depthLeft < debugDepth)
+                                DrawAABB(leftAABB);
 
-        //                }
+                            depthLeft += 1;
 
-        //                uint rightIndex = internalNode.rightNode;
-        //                uint rightType = internalNode.rightNodeType;
+                        }
 
-        //                if (rightType == 0)// INTERNAL_NODE
-        //                {
-        //                    stack[currentStackIndex] = rightIndex;
-        //                    currentStackIndex++;
+                        uint rightIndex = internalNode.rightNode;
+                        uint rightType = internalNode.rightNodeType;
 
+                        if (rightType == 0)// INTERNAL_NODE
+                        {
+                            stack[currentStackIndex] = rightIndex;
+                            currentStackIndex++;
 
-        //                    AABB rightAABB = _container.BVHLocalData[rightIndex];
-        //                    Gizmos.color = Color.Lerp(Color.green * 0.25f, Color.green, (float)depthRight / depthMax);
-                            
-        //                    if (depthRight < debugDepth)
-        //                        DrawAABB(rightAABB);
+                            AABB rightAABB = aabbs[rightIndex];
+                            Gizmos.color = Color.Lerp(Color.green * 0.25f, Color.green, (float)depthRight / depthMax);
 
-        //                    depthRight += 1;
-        //                }
-        //            }
-        //            //{
-        //            //    List<int[]> values = new List<int[]>();
-        //            //    for (int i = 0; i < _container.Triangles.Length; i += 3)
-        //            //        values.Add(new int[3] { _container.Triangles[i], _container.Triangles[i + 1], _container.Triangles[i + 2] });
+                            if (depthRight < debugDepth)
+                                DrawAABB(rightAABB);
 
-        //            //    Vector3 start = Vector3.zero;
+                            depthRight += 1;
+                        }
+                    }
+                    //{
+                    //    List<int[]> values = new List<int[]>();
+                    //    for (int i = 0; i < container.Triangles.Length; i += 3)
+                    //        values.Add(new int[3] { container.Triangles[i], container.Triangles[i + 1], container.Triangles[i + 2] });
 
-        //            //    uint[] sortedValues = _container.ValuesData;
+                    //    Vector3 start = Vector3.zero;
 
-        //            //    for (int i = 0; i < sortedValues.Length; ++i)
-        //            //    {
-        //            //        int i0 = values[(int)sortedValues[i]][0];
-        //            //        int i1 = values[(int)sortedValues[i]][1];
-        //            //        int i2 = values[(int)sortedValues[i]][2];
+                    //    uint[] sortedValues = container.ValuesData;
 
-        //            //        Vector3 v0 = _container.Vertices[i0];
-        //            //        Vector3 v1 = _container.Vertices[i1];
-        //            //        Vector3 v2 = _container.Vertices[i2];
-        //            //        Vector3 center = (v0 + v1 + v2) / 3;
+                    //    for (int i = 0; i < sortedValues.Length; ++i)
+                    //    {
+                    //        int i0 = values[(int)sortedValues[i]][0];
+                    //        int i1 = values[(int)sortedValues[i]][1];
+                    //        int i2 = values[(int)sortedValues[i]][2];
 
-        //            //        Gizmos.color = Color.white;
-        //            //        Gizmos.DrawLine(center, start);
-        //            //        start = center;
-        //            //    }
-        //            //}
-        //        }
-        //        break;
-        //}
+                    //        Vector3 v0 = container.Vertices[i0];
+                    //        Vector3 v1 = container.Vertices[i1];
+                    //        Vector3 v2 = container.Vertices[i2];
+                    //        Vector3 center = (v0 + v1 + v2) / 3;
+
+                    //        Gizmos.color = Color.white;
+                    //        Gizmos.DrawLine(center, start);
+                    //        start = center;
+                    //    }
+                    //}
+                }
+                break;
+        }
     }
     #endregion
 }
