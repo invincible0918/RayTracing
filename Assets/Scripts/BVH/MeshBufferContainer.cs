@@ -24,7 +24,6 @@ public class MeshBufferContainer/* : IDisposable*/
     public ComputeBuffer BvhInternalNode => bvhInternalNodesBuffer.DeviceBuffer;
     public uint[] KeysData => keysBuffer.LocalBuffer;
     public uint[] ValuesData => triangleIndexBuffer.LocalBuffer;
-
     public AABB[] TriangleAABBLocalData => triangleAABBBuffer.LocalBuffer;
     public AABB[] BVHLocalData => bvhDataBuffer.LocalBuffer;
     public LeafNode[] BvhLeafNodeLocalData => bvhLeafNodesBuffer.LocalBuffer;
