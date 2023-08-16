@@ -166,16 +166,13 @@ public class BVH : MonoBehaviour
         //for (int i = 0; i < container.TriangleAABB.count; ++i)
         //    Debug.Log(aabbs[i].ToString());
 
-        // 5. 收集材质球
-        InitMaterialData(materials);
-
         // 6. 开始渲染
-        rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndices", container.triangleIndexBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "triangleAABB", container.triangleAABBBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "internalNodes", container.bvhInternalNodeBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "leafNodes", container.bvhLeafNodeBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "bvhData", container.bvhDataBuffer);
-        rayTracingShader.SetBuffer(kernelHandle, "triangleData", container.triangleDataBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "triangleAABBBuffer", container.triangleAABBBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "bvhDataBuffer", container.bvhDataBuffer);
+        rayTracingShader.SetBuffer(kernelHandle, "triangleDataBuffer", container.triangleDataBuffer);
         rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
     }
 

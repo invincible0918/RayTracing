@@ -10,12 +10,12 @@ struct MaterialData
     uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
 };
 
-StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-StructuredBuffer<AABB> triangleAABB; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-StructuredBuffer<InternalNode> internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
-StructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-StructuredBuffer<AABB> bvhData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
-StructuredBuffer<Triangle> triangleData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> sortedTriangleIndexBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<AABB> triangleAABBBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<InternalNode> bvhInternalNodeBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
+StructuredBuffer<LeafNode> bvhLeafNodeBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<AABB> bvhDataBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
+StructuredBuffer<Triangle> triangleDataBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<MaterialData> materialDataBuffer;
 
 bool RayBoxIntersection(AABB b, Ray r)
@@ -34,9 +34,9 @@ bool RayBoxIntersection(AABB b, Ray r)
 
 void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
 {
-    if (RayBoxIntersection(triangleAABB[triangleIndex], ray))
+    if (RayBoxIntersection(triangleAABBBuffer[triangleIndex], ray))
     {
-        const Triangle tri = triangleData[triangleIndex];
+        const Triangle tri = triangleDataBuffer[triangleIndex];
         float t, u, v;
         if (IntersectTriangle_MT97(ray, tri.point0, tri.point1, tri.point2, t, u, v))
         {
@@ -76,13 +76,13 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
         currentStackIndex --;
         const uint index = stack[currentStackIndex];
 
-        if (!RayBoxIntersection(bvhData[index], ray))
+        if (!RayBoxIntersection(bvhDataBuffer[index], ray))
         {
             continue;
         }
 
-        const uint leftIndex = internalNodes[index].leftNode;
-        const uint leftType = internalNodes[index].leftNodeType;
+        const uint leftIndex = bvhInternalNodeBuffer[index].leftNode;
+        const uint leftType = bvhInternalNodeBuffer[index].leftNodeType;
 
         if (leftType == INTERNAL_NODE)
         {
@@ -91,12 +91,12 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
         }
         else
         {
-            const uint triangleIndex = sortedTriangleIndices[leafNodes[leftIndex].index];
+            const uint triangleIndex = sortedTriangleIndexBuffer[bvhLeafNodeBuffer[leftIndex].index];
             CheckTriangle(triangleIndex, ray, hit);
         }
 
-        const uint rightIndex = internalNodes[index].rightNode;
-        const uint rightType = internalNodes[index].rightNodeType;
+        const uint rightIndex = bvhInternalNodeBuffer[index].rightNode;
+        const uint rightType = bvhInternalNodeBuffer[index].rightNodeType;
 
 
         if (rightType == INTERNAL_NODE)
@@ -106,12 +106,12 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
         }
         else
         {
-            const uint triangleIndex = sortedTriangleIndices[leafNodes[rightIndex].index];
+            const uint triangleIndex = sortedTriangleIndexBuffer[bvhLeafNodeBuffer[rightIndex].index];
             CheckTriangle(triangleIndex, ray, hit);
         }
     }
 
-    //const Triangle t = triangleData[result.triangleIndex];
+    //const Triangle t = triangleDataBuffer[result.triangleIndex];
     //const float2 uv = (1 - result.uv.x - result.uv.y) * t.a_uv + result.uv.x * t.b_uv + result.uv.y * t.c_uv;
     //const float3 normal = (1 - result.uv.x - result.uv.y) * t.a_normal + result.uv.x * t.b_normal + result.uv.y * t.c_normal;
 }
