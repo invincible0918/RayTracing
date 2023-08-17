@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -86,6 +87,10 @@ public class BVH : MonoBehaviour
     ComputeBufferSorter<uint, uint> sorter;
     BVHConstructor bvhConstructor;
 
+    ////////////// chapter4_4 //////////////
+    uint[] debugBeforeSortTriangleIndice;
+    uint[] debugAfterSortTriangleIndice;
+
     ////////////// chapter4_3 //////////////
     public void Init(ComputeShader shader, int handle)
     {
@@ -109,44 +114,53 @@ public class BVH : MonoBehaviour
         ////////////// chapter4_4 //////////////
         // 构造 AABB, Morton Code
         MeshData.Calculate(container.trianglesLength,
-        container.vertexBuffer,
-        container.indexBuffer,
-        container.mortonCodeBuffer,
-        container.triangleIndexBuffer,
-        container.triangleAABBBuffer,
-        container.triangleDataBuffer,
-        container.materialIndexBuffer,
-        container.shadowIndexBuffer,
-        container.bounds,
-        meshDataShader);
+            container.vertexBuffer,
+            container.indexBuffer,
+            container.mortonCodeBuffer,
+            container.triangleIndexBuffer,
+            container.triangleAABBBuffer,
+            container.triangleDataBuffer,
+            container.materialIndexBuffer,
+            container.shadowIndexBuffer,
+            container.bounds,
+            meshDataShader);
 
         //Debug.Log("Before BVH");
         ////container.GetAllGpuData();
         ////container.PrintData();
 
-        //// 3. 基数排序Radix Sort，适合并行计算的排序算法
-        //sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
-        //    container.mortonCodeBuffer,
-        //    container.triangleIndexBuffer,
-        //    localRadixSortShader,
-        //    globalRadixSortShader,
-        //    scanShader);
-        //sorter.Sort();
+        ////////////// chapter4_5 //////////////
+        //// 基数排序Radix Sort，适合并行计算的排序算法 https://github.com/drzhn/UnityGpuCollisionDetection
+        debugBeforeSortTriangleIndice = new uint[container.triangleIndexBuffer.count];
+        container.triangleIndexBuffer.GetData(debugBeforeSortTriangleIndice);
+        Debug.Log("Before Radix Sort:\n" + ArrayToString(debugBeforeSortTriangleIndice));
 
-        //container.DistributeMortonCode();
+        sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
+            container.mortonCodeBuffer,
+            container.triangleIndexBuffer,
+            localRadixSortShader,
+            globalRadixSortShader,
+            scanShader);
+        sorter.Sort();
+        container.DistributeMortonCode();
 
-        //// 4. 构造BVH
-        //bvhConstructor = new BVHConstructor(container.trianglesLength,
-        //    container.mortonCodeBuffer,
-        //    container.triangleIndexBuffer,
-        //    container.triangleAABBBuffer,
-        //    container.bvhInternalNodeBuffer,
-        //    container.bvhLeafNodeBuffer,
-        //    container.bvhDataBuffer,
-        //    bvhShader);
+        debugAfterSortTriangleIndice = new uint[container.triangleIndexBuffer.count];
+        container.triangleIndexBuffer.GetData(debugAfterSortTriangleIndice);
+        Debug.Log("After Radix Sort:\n" + ArrayToString(debugAfterSortTriangleIndice));
 
-        //bvhConstructor.ConstructTree();
-        //bvhConstructor.ConstructBVH();
+        ////////////// chapter4_6 //////////////
+        //// 构造BVH
+        bvhConstructor = new BVHConstructor(container.trianglesLength,
+            container.mortonCodeBuffer,
+            container.triangleIndexBuffer,
+            container.triangleAABBBuffer,
+            container.bvhInternalNodeBuffer,
+            container.bvhLeafNodeBuffer,
+            container.bvhDataBuffer,
+            bvhShader);
+
+        bvhConstructor.ConstructTree();
+        bvhConstructor.ConstructBVH();
 
         //Debug.Log("After BVH");
         ////container.PrintData();
@@ -301,6 +315,19 @@ public class BVH : MonoBehaviour
         bvhConstructor?.Dispose();
     }
 
+    ////////////// chapter4_5 //////////////
+    StringBuilder ArrayToString<T>(T[] array, uint maxElements = 4096)
+    {
+        StringBuilder builder = new StringBuilder("");
+        for (var i = 0; i < array.Length; i++)
+        {
+            if (i >= maxElements) break;
+            builder.Append(array[i] + " ");
+        }
+
+        return builder;
+    }
+
     ////////////// chapter4_4 //////////////
     #region Debug
     private void DrawAABB(AABB aabb, float scale = 1.0f)
@@ -315,7 +342,6 @@ public class BVH : MonoBehaviour
             case DebugDataType.AABB:
             case DebugDataType.MortonCode:
                 {
-
                     AABB[] aabbs = new AABB[container.trianglesLength];
                     container.triangleAABBBuffer.GetData(aabbs);
 
@@ -324,13 +350,25 @@ public class BVH : MonoBehaviour
                         uint[] mortonCodes = new uint[container.trianglesLength];
                         container.mortonCodeBuffer.GetData(mortonCodes);
 
-                        for (int i = 0; i < container.trianglesLength; i++)
+                        //Dictionary<int, uint> di = mortonCodes.ToDictionary(key => System.Array.IndexOf(mortonCodes, key), key => key);
+                        Dictionary<int, uint> di = new Dictionary<int, uint>();
+                        for (int i = 0; i < mortonCodes.Length; ++i)
+                            di.Add(i, mortonCodes[i]);
+                        //di = di.OrderBy(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
+
+                        Vector3 fromPos = Vector3.zero;
+                        foreach (KeyValuePair<int, uint> kvp in di)
                         {
                             Gizmos.color = Color.green;
-                            DrawAABB(aabbs[i]);
+                            DrawAABB(aabbs[kvp.Key]);
+
+                            Vector3 toPos = (aabbs[kvp.Key].min + aabbs[kvp.Key].max) / 2;
+                            if (fromPos != Vector3.zero)
+                                UnityEditor.Handles.DrawLine(fromPos, toPos);
+                            fromPos = toPos;
                             
                             Gizmos.color = Color.white;
-                            UnityEditor.Handles.Label((aabbs[i].min + aabbs[i].max) / 2, mortonCodes[i].ToString());
+                            UnityEditor.Handles.Label(toPos, kvp.Value.ToString());
                         }
                     }
                     else
@@ -355,7 +393,7 @@ public class BVH : MonoBehaviour
                     for (int i = 0; i < triangles.Length; i += 3)
                         values.Add(new int[3] { triangles[i], triangles[i + 1], triangles[i + 2] });
 
-                    Vector3 start = Vector3.zero;
+                    Vector3 fromPos = Vector3.zero;
                     if (debugDataType == DebugDataType.BeforeSort)
                     {
                         for (int i = 0; i < values.Count; ++i)
@@ -367,10 +405,13 @@ public class BVH : MonoBehaviour
                             Vector3 v0 = vertices[i0].position;
                             Vector3 v1 = vertices[i1].position;
                             Vector3 v2 = vertices[i2].position;
-                            Vector3 center = (v0 + v1 + v2) / 3;
+                            Vector3 toPos = (v0 + v1 + v2) / 3;
 
-                            Gizmos.DrawLine(center, start);
-                            start = center;
+                            Gizmos.color = Color.white;
+                            Gizmos.DrawLine(fromPos, toPos);
+                            Gizmos.color = Color.green;
+                            UnityEditor.Handles.Label(toPos + new Vector3(0, 1, 0), i.ToString());
+                            fromPos = toPos;
 
                             //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
                             //{
@@ -383,6 +424,10 @@ public class BVH : MonoBehaviour
                         uint[] sortedValues = new uint[container.triangleIndexBuffer.count];
                         container.triangleIndexBuffer.GetData(sortedValues);
 
+                        Vector3 min = Vector3.one * float.MaxValue;
+                        Vector3 max = Vector3.one * float.MinValue;
+
+                        int clusterIndex = 0;
                         for (int i = 0; i < sortedValues.Length; ++i)
                         {
                             int i0 = values[(int)sortedValues[i]][0];
@@ -392,10 +437,30 @@ public class BVH : MonoBehaviour
                             Vector3 v0 = vertices[i0].position;
                             Vector3 v1 = vertices[i1].position;
                             Vector3 v2 = vertices[i2].position;
-                            Vector3 center = (v0 + v1 + v2) / 3;
+                            Vector3 toPos = (v0 + v1 + v2) / 3;
 
-                            Gizmos.DrawLine(center, start);
-                            start = center;
+                            Gizmos.color = Color.white;
+                            Gizmos.DrawLine(fromPos, toPos);
+                            Gizmos.color = Color.green;
+                            UnityEditor.Handles.Label(toPos + new Vector3(0, 1, 0), sortedValues[i].ToString());
+                            fromPos = toPos;
+
+                            if (i % Constants.RADIX != 0)
+                            {
+                                min = Vector3.Min(min, Vector3.Min(v0, Vector3.Min(v1, v2)));
+                                max = Vector3.Max(max, Vector3.Max(v0, Vector3.Max(v1, v2)));
+                            }
+                            else
+                            {
+                                Vector3 center = (min + max) / 2;
+                                Gizmos.DrawWireCube(center, max - min);
+                                UnityEditor.Handles.Label(center, "cluster index: " + clusterIndex.ToString());
+
+                                min = Vector3.one * float.MaxValue;
+                                max = Vector3.one * float.MinValue;
+
+                                clusterIndex += 1;
+                            }
                             //if (i >= debugTriangleIndexRange.x && i <= debugTriangleIndexRange.y)
                             //{
                             //    UnityEditor.Handles.Label(center, i.ToString());

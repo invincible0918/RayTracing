@@ -12,7 +12,7 @@ public class MeshCollector : MonoBehaviour
     Camera cam;
 
     //////////////// chapter3_3 //////////////
-    /// ½« Plane´Ó Primitive´¦¼Ì³Ğ
+    /// å°† Planeä» Primitiveå¤„ç»§æ‰¿
     [StructLayout(LayoutKind.Sequential)]
     struct Plane : Primitive
     {
@@ -140,7 +140,7 @@ public class MeshCollector : MonoBehaviour
             int firstVertex = vertices.Count;
             vertices.AddRange(mesh.vertices);
 
-            // normal ¿ÉÒÔÏÈ²»½²½â
+            // normal å¯ä»¥å…ˆä¸è®²è§£
             normals.AddRange(mesh.normals);
 
             // Add index data - if the vertex buffer wasn't empty before, the
@@ -163,7 +163,7 @@ public class MeshCollector : MonoBehaviour
     ComputeBuffer normalBuffer;
     ComputeBuffer indexBuffer;
     static List<Vector3> vertices = new List<Vector3>();
-    static List<Vector3> normals = new List<Vector3>(); // normal ¿ÉÒÔÏÈ²»½²½â£¬ ĞèÒª½áºÏĞı×ªÀ´½²½â
+    static List<Vector3> normals = new List<Vector3>(); // normal å¯ä»¥å…ˆä¸è®²è§£ï¼Œ éœ€è¦ç»“åˆæ—‹è½¬æ¥è®²è§£
     static List<int> indices = new List<int>();
 
     ////////////// chapter2_2 //////////////
@@ -177,7 +177,7 @@ public class MeshCollector : MonoBehaviour
         InitPrimitive<Cube>(cs, kernelHandle, ref cubeBuffer, cubeParent, "cubeBuffer", "cubeCount");
         ////////////// chapter4_1 //////////////
         vertices.Clear();
-        normals.Clear();// normal ¿ÉÒÔÏÈ²»½²½â
+        normals.Clear();// normal å¯ä»¥å…ˆä¸è®²è§£
         indices.Clear();
 
         InitPrimitive<CustomMesh>(cs, kernelHandle, ref customMeshBuffer, customMeshParent, "customMeshBuffer", "customMeshCount");
@@ -186,7 +186,7 @@ public class MeshCollector : MonoBehaviour
         vertexBuffer.SetData(vertices);
         cs.SetBuffer(kernelHandle, "vertexBuffer", vertexBuffer);
 
-        // normal ¿ÉÒÔÏÈ²»½²½â
+        // normal å¯ä»¥å…ˆä¸è®²è§£
         normalBuffer = new ComputeBuffer(normals.Count, sizeof(float) * 3);
         normalBuffer.SetData(normals);
         cs.SetBuffer(kernelHandle, "normalBuffer", normalBuffer);
@@ -225,7 +225,7 @@ public class MeshCollector : MonoBehaviour
                 float distance = Vector3.Distance(r.transform.position, cam.transform.position);
                 di.Add(r, distance);
             }
-            // ÏÈÊ¾·¶²»ÅÅĞòµÄ½á¹û
+            // å…ˆç¤ºèŒƒä¸æ’åºçš„ç»“æœ
             di = di.OrderByDescending(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
 
             primitives = new T[di.Keys.Count];

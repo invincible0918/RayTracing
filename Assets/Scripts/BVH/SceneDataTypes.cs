@@ -9,10 +9,10 @@ public struct AABB
     public Vector3 max;
     public float _dummy1;
 
-    public override string ToString()
-    {
-        return $"min:{min}, max:{max}, dummy0: {_dummy0}, dummy1: {_dummy1};\n";
-    }
+    //public override string ToString()
+    //{
+    //    return $"min:{min}, max:{max}, dummy0: {_dummy0}, dummy1: {_dummy1};\n";
+    //}
 
     public static AABB NullAABB = new AABB()
     {
@@ -57,11 +57,11 @@ public struct Triangle
     int materialIndex;
     Vector3 _dummy10;
 
-    public override string ToString()
-    {
-        //return $"point0:{point0}, point1:{point1}, point2:{point2}, normal0:{normal0}, normal1:{normal1}, normal2:{normal2}, materialIndex:{materialIndex}\n";
-        return $"{materialIndex},";
-    }
+    //public override string ToString()
+    //{
+    //    //return $"point0:{point0}, point1:{point1}, point2:{point2}, normal0:{normal0}, normal1:{normal1}, normal2:{normal2}, materialIndex:{materialIndex}\n";
+    //    return $"{materialIndex},";
+    //}
 
     public static Triangle NullTriangle = new Triangle()
     {
@@ -107,15 +107,15 @@ public struct InternalNode
     public uint parent;
     public uint index;
 
-    public override string ToString()
-    {
-        string GetNodeType(uint type)
-        {
-            return type == 0 ? "I" : "L";
-        }
+    //public override string ToString()
+    //{
+    //    string GetNodeType(uint type)
+    //    {
+    //        return type == 0 ? "I" : "L";
+    //    }
 
-        return $"index:{index}, left:{leftNode} {GetNodeType(leftNodeType)}, right:{rightNode} {GetNodeType(rightNodeType)}, parent:{parent}\n";
-    }
+    //    return $"index:{index}, left:{leftNode} {GetNodeType(leftNodeType)}, right:{rightNode} {GetNodeType(rightNodeType)}, parent:{parent}\n";
+    //}
     
     public static InternalNode NullLeaf = new InternalNode()
     {
@@ -134,10 +134,10 @@ public struct LeafNode
     public uint parent;
     public uint index;
 
-    public override string ToString()
-    {
-        return $"index:{index}, parent:{parent}\n";
-    }
+    //public override string ToString()
+    //{
+    //    return $"index:{index}, parent:{parent}\n";
+    //}
 
     public static LeafNode NullLeaf = new LeafNode()
     {

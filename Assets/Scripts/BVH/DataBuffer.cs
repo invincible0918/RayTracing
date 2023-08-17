@@ -31,11 +31,11 @@ public class DataBuffer<T> : IDisposable where T : struct
         computeBuffer.GetData(array);
     }
 
-    public override string ToString()
-    {
-        GetData(out T[] array);
-        return Utils.ArrayToString(array).ToString();
-    }
+    //public override string ToString()
+    //{
+    //    GetData(out T[] array);
+    //    return Utils.ArrayToString(array).ToString();
+    //}
 
     public void Dispose()
     {
