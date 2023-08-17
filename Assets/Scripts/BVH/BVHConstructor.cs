@@ -28,7 +28,7 @@ public class BVHConstructor : IDisposable
         ComputeBuffer triangleAABB,
         ComputeBuffer internalNodes,
         ComputeBuffer leafNodes,
-        ComputeBuffer BVHData,
+        ComputeBuffer bvhData,
         ComputeShader bvhShader)
     {
         _sortedMortonCodes = sortedMortonCodes;
@@ -37,7 +37,7 @@ public class BVHConstructor : IDisposable
 
         _internalNodes = internalNodes;
         _leafNodes = leafNodes;
-        _bvhData = BVHData;
+        _bvhData = bvhData;
         _atomics = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, 0);
         _trianglesCount = trianglesCount;
 
@@ -55,7 +55,7 @@ public class BVHConstructor : IDisposable
         _bvhShader.SetBuffer(_bvhConstructionKernel, "triangleAABB", _triangleAABB);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "sortedTriangleIndices", _sortedTriangleIndices);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "atomicsData", _atomics.computeBuffer);
-        _bvhShader.SetBuffer(_bvhConstructionKernel, "BVHData", _bvhData);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "bvhData", _bvhData);
     }
 
     public void ConstructTree()

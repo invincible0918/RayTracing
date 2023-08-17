@@ -1,4 +1,4 @@
-﻿#include "ImportanceSampling.cginc"
+﻿#include "RayTracing/ImportanceSampling.cginc"
 
 static const float SPECCUBE_LOD_STEPS = 6;
 TextureCube<float4> skyboxCube;

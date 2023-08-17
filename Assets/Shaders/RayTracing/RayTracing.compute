@@ -21,8 +21,8 @@ float4 pixelOffset;
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    //////////////// chapter3_2 //////////////
-    //pixel = id.xy;
+    ////////////// chapter5_2 //////////////
+    _pixel = id.xy;
 
     ////////////// chapter2_1 //////////////
     //Ray ray = CreateCameraRay(0);
@@ -40,7 +40,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     for (int i = 0; i < MAX_BOUNCE; i++)
     {
-
         ////////////// chapter2_1 //////////////
         //RayHit hit = BruteForceRayTrace(ray);
         ////////////// chapter4_3 //////////////
@@ -49,11 +48,9 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 #else
         RayHit hit = BruteForceRayTrace(ray);
 #endif
-
         //col += Shade(hit, ray);
         // chapter3_1
         col += ray.energy * Shade(hit, ray);
-
 
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;

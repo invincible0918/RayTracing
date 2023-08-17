@@ -11,6 +11,9 @@ float4x4 cameraInverseProjection;
 ////////////// chapter4_1 //////////////
 static const float EPSILON = 1e-8;
 
+////////////// chapter5_2 //////////////
+static const float PI = 3.14159265f;
+
 ////////////// chapter2_1 //////////////
 struct Ray
 {
@@ -56,6 +59,10 @@ struct RayHit
     float smoothness;
     float transparent;
     float3 emissionColor;
+    //////////////// chapter4_7 //////////////
+    uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
+    int castShadow;
+    int receiveShadow;
 };
 
 RayHit CreateRayHit()
@@ -67,15 +74,15 @@ RayHit CreateRayHit()
     return hit;
 }
 
-//////////////// chapter3_2 //////////////
-//float2 pixel;
-//float seed;
-//// range: 0~1
-//float Rand()
-//{
-//    float result = frac(sin(seed / 100.0f * dot(pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
-//    seed += 1.0f;
-//    return result;
-//}
+////////////// chapter5_2 //////////////
+float2 _pixel;
+float seed;
+// range: 0~1
+float Rand()
+{
+    float result = frac(sin(seed / 100.0f * dot(_pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
+    seed += 1.0f;
+    return result;
+}
 
 #endif

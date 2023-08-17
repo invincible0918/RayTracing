@@ -56,9 +56,9 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
                 hit.smoothness = materialData.smoothness;
                 hit.transparent = materialData.transparent;
                 hit.emissionColor = materialData.emissionColor;
-                //hit.materialType = materialData.materialType;
-                //hit.castShadow = tri.castShadow;
-                //hit.receiveShadow = tri.receiveShadow;
+                hit.materialType = materialData.materialType;
+                hit.castShadow = tri.castShadow;
+                hit.receiveShadow = tri.receiveShadow;
             }
         }
     }
@@ -116,9 +116,11 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
     //const float3 normal = (1 - result.uv.x - result.uv.y) * t.a_normal + result.uv.x * t.b_normal + result.uv.y * t.c_normal;
 }
 
+
 RayHit BVHTrace(Ray ray)   
 {
     RayHit hit = CreateRayHit();
+    ////////////// chapter4_7 //////////////
     IntersectTriangle(ray, hit);
     
     return hit;

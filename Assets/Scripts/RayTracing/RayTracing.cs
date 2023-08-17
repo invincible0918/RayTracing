@@ -71,6 +71,7 @@ public class RayTracing : MonoBehaviour
         // 当相机移动了之后，需要重新计算
         if (transform.hasChanged)
         {
+            currentSample = 0;
             transform.hasChanged = false;
         }
     }
@@ -151,6 +152,9 @@ public class RayTracing : MonoBehaviour
         cs.SetMatrix("cameraInverseProjection", cam.projectionMatrix.inverse);
         //////////////// chapter3_5 //////////////
         cs.SetVector("pixelOffset", new Vector4(Random.value, Random.value, 0, 0));
+
+        //////////////// chapter5_2 //////////////
+        cs.SetFloat("seed", Random.value);
     }
 
     void CreateRT(ref RenderTexture rt)

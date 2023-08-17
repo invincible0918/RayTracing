@@ -87,6 +87,10 @@ void IntersectPlane(Ray ray, Plane plane, inout RayHit hit)
             hit.smoothness = plane.smoothness;
             hit.transparent = plane.transparent;
             hit.emissionColor = plane.emissionColor;
+
+            hit.materialType = -1;
+            hit.castShadow = -1;
+            hit.receiveShadow = -1;
         }
     }
 }
@@ -122,6 +126,10 @@ void IntersectSphere(Ray ray, Sphere sphere, inout RayHit hit)
     hit.smoothness = sphere.smoothness;
     hit.transparent = sphere.transparent;
     hit.emissionColor = sphere.emissionColor;
+
+    hit.materialType = -1;
+    hit.castShadow = -1;
+    hit.receiveShadow = -1;
 }
 
 void IntersectCube(Ray ray, Cube cube, inout RayHit hit)
@@ -155,6 +163,10 @@ void IntersectCube(Ray ray, Cube cube, inout RayHit hit)
     hit.smoothness = cube.smoothness;
     hit.transparent = cube.transparent;
     hit.emissionColor = cube.emissionColor;
+
+    hit.materialType = -1;
+    hit.castShadow = -1;
+    hit.receiveShadow = -1;
 }
 
 //////////////// chapter4_1 //////////////

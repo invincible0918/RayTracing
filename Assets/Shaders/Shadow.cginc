@@ -95,7 +95,7 @@ float3 SoftShadow(float3 origin, float3 lightDir)
     // use the screen space blue noise texture and golden ratio * frame number to
     // get a "random number" to convert to an angle for how much to rotate
     // the blue noise sample positions for this pixel
-    float blueNoise = rand();//texture(iChannel1, pixelPos / 1024.0f).r;
+    float blueNoise = Rand();//texture(iChannel1, pixelPos / 1024.0f).r;
     //blueNoise = frac(blueNoise + GOLDEN_RATIO_CONJUGATE * float(frame));
     float theta = blueNoise * 2.0 * PI;
     float cosTheta = cos(theta);
