@@ -3,7 +3,7 @@ Shader "MyCustom/TestLowFilter"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _Sample ("Sample", float) = 0
+        _SamplePrePixel("_SamplePrePixel", float) = 0
     }
     SubShader
     {
@@ -39,7 +39,7 @@ Shader "MyCustom/TestLowFilter"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-            float _Sample;
+            float _SamplePrePixel;
 
             v2f vert (appdata v)
             {
@@ -52,7 +52,7 @@ Shader "MyCustom/TestLowFilter"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return float4(tex2D(_MainTex, i.uv).rgb, 1.0f / (_Sample + 1.0f));
+                return float4(tex2D(_MainTex, i.uv).rgb, 1.0f / (_SamplePrePixel + 1.0f));
             }
             ENDCG
         }

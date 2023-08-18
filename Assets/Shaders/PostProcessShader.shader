@@ -39,12 +39,12 @@ Shader "MyCustom/PostProcessShader"
 			}
 			
 			sampler2D _MainTex;
-			float _Sample;
+			float _SamplePrePixel;
 
 			float4 frag(v2f i) : SV_Target
 			{
 				// 做一个低通滤波就能起到一个抗锯齿的作用，相当于加一层后处理。工作原理就是平均化。
-				return float4(tex2D(_MainTex, i.uv).rgb, 1.0f / (_Sample + 1.0f));
+				return float4(tex2D(_MainTex, i.uv).rgb, 1.0f / (_SamplePrePixel + 1.0f));
 			}
 			ENDCG
 		}

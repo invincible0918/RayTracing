@@ -28,7 +28,7 @@ public class RayTracing : MonoBehaviour
     //////////////// chapter3_5 //////////////
     public RenderTexture convergedRT;
     public bool aliasing;
-    public uint currentSample = 0;
+    public uint samplePrePixel = 0;
     Material addMaterial;
 
     ////////////// chapter4_3 //////////////
@@ -71,7 +71,7 @@ public class RayTracing : MonoBehaviour
         // 当相机移动了之后，需要重新计算
         if (transform.hasChanged)
         {
-            currentSample = 0;
+            samplePrePixel = 0;
             transform.hasChanged = false;
         }
     }
@@ -108,11 +108,11 @@ public class RayTracing : MonoBehaviour
             // Blit the result texture to the screen
             if (addMaterial == null)
                 addMaterial = new Material(Shader.Find("MyCustom/AddShader"));
-            addMaterial.SetFloat("_Sample", currentSample);
+            addMaterial.SetFloat("_SamplePrePixel", samplePrePixel);
             Graphics.Blit(rt, convergedRT, addMaterial);
             Graphics.Blit(convergedRT, destination);
 
-            currentSample++;
+            samplePrePixel++;
         }
     }
 
@@ -129,7 +129,7 @@ public class RayTracing : MonoBehaviour
         //////////////// chapter3_5 //////////////
         CreateRT(ref convergedRT);
         // Reset sampling
-        currentSample = 0;
+        samplePrePixel = 0;
     }
 
     void InitShader()
