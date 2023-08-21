@@ -17,7 +17,7 @@
 #include "BruteForceTrace.cginc"
 #include "BVH/BVHTracing.cginc"
 #include "Shade.cginc"
-#include "Shadow.cginc"
+#include "RayTracing/Shadow.cginc"
 
 
 // Create a RenderTexture with enableRandomWrite flag and set it

@@ -1,11 +1,6 @@
 ﻿#ifndef _WHITTED_RAY_TRACING_
 #define _WHITTED_RAY_TRACING_
 
-//////////////// chapter3_4 //////////////
-float4 lightParameter;          // rgb: direction, a:intensity
-float4 lightColor;
-float4 shadowParameter;         // rgb: color, a:intensity
-
 // chapter3_1
 float3 reflectFunction(float3 I, float3 N) 
 { 

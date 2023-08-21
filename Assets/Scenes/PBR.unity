@@ -3343,16 +3343,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58d7fb00927ad4a66819dcc657ae56b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugRef: 0
   meshParent: {fileID: 1990499560}
   meshDataShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
+  mesh: {fileID: 0}
+  debugDataType: 0
+  debugDepth: 1
   localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
   globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
   bvhShader: {fileID: 7200000, guid: 54cbbe9726fbbce42ba08f5bded50a16, type: 3}
-  debugDataType: 0
-  debugDepth: 1
-  mesh: {fileID: 0}
 --- !u!114 &963194231
 MonoBehaviour:
   m_ObjectHideFlags: 0

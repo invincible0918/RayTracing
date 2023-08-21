@@ -11,6 +11,13 @@ float4x4 cameraInverseProjection;
 ////////////// chapter4_1 //////////////
 static const float EPSILON = 1e-8;
 
+
+//////////////// chapter3_4 //////////////
+float4 lightParameter;          // rgb: direction, a:intensity
+float4 lightColor;
+float4 shadowParameter;         // rgb: color, a:intensity
+
+
 ////////////// chapter5_2 //////////////
 static const float PI = 3.14159265f;
 

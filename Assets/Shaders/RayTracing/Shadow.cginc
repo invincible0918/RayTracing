@@ -74,20 +74,18 @@ static const float2 BLUE_NOISE_IN_DISK[64] = {
     float2(-0.210004,0.519896) 
 };
 
-
-const float4 shadowParameter;
-
-
-void HardShadow(inout Ray ray, float3 lightDir)
+float3 HardShadow(float3 origin, float3 lightDir)
 {
 	// 正式添加软阴影的实现
-    Ray shadowRay = CreateRay(ray.origin, lightDir);
+    Ray shadowRay = CreateRay(origin, lightDir);
     RayHit shadowHit = BVHTrace(shadowRay);
     if (shadowHit.castShadow > 0 && shadowHit.distance != 1.#INF)
     {
         // 可以用enery来控制阴影的黑色
-        ray.energy *= lerp(1, shadowParameter.rgb, shadowParameter.a);
+        return lerp(1, shadowParameter.rgb, shadowParameter.a);
     }
+    else
+        return 1;
 }
 
 float3 SoftShadow(float3 origin, float3 lightDir)
@@ -135,11 +133,4 @@ float3 SoftShadow(float3 origin, float3 lightDir)
     }
 
     return lerp(1, shadowParameter.rgb, shadowParameter.a * shadowTerm);
-
-}
-
-float3 Shadow(Ray ray, RayHit hit)
-{
-    float3 softShadow = SoftShadow(hit.position + hit.normal * 0.01f, -light.xyz);
-    return softShadow;
 }

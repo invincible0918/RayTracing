@@ -35,6 +35,21 @@ public class RayTracing : MonoBehaviour
     public BVH bvh;
     public bool useBVH;
 
+    ////////////// chapter6_1 //////////////
+    public enum SamplingType
+    {
+        Uniform,
+        Cosine,
+        LightImportance,
+        BSDFImportance,
+        MultipleImportance
+    }
+    public SamplingType samplingType = SamplingType.Uniform;
+
+    ////////////// chapter6_2 //////////////
+    public LightImportanceSampling lightImportanceSampling;
+
+
     // Start is called before the first frame update
     void Start()
     {
@@ -44,6 +59,8 @@ public class RayTracing : MonoBehaviour
         //////////////// chapter3_4 //////////////
         InitLight();
         InitShader();
+        //////////////// chapter6_1 //////////////
+        InitSampling();
 
         ////////////// chapter2_2 //////////////
         //meshCollector.Init(cs, kernelHandle);
@@ -62,8 +79,6 @@ public class RayTracing : MonoBehaviour
 
         isInitialized = true;
     }
-
-
 
     // Update is called once per frame
     void Update()
@@ -141,6 +156,10 @@ public class RayTracing : MonoBehaviour
 
         ////////////// chapter3_1 //////////////
         cs.SetTexture(kernelHandle, "skyboxCube", skyboxMat.GetTexture("_Tex"));
+
+        ////////////// chapter5_3 //////////////
+        cs.SetFloat("skyboxRotation", skyboxMat.GetFloat("_Rotation"));
+        cs.SetFloat("skyboxExposure", skyboxMat.GetFloat("_Exposure"));
     }
 
     void UpdateParameters()
@@ -186,5 +205,54 @@ public class RayTracing : MonoBehaviour
         cs.SetVector("lightParameter", new Vector4(dir.x, dir.y, dir.z, mainLight.intensity));
         cs.SetVector("lightColor", mainLight.color);
         cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
+
+        ////////////// chapter5_4 //////////////
+        cs.DisableKeyword("NO_SHADOW");
+        cs.DisableKeyword("HARD_SHADOW");
+        cs.DisableKeyword("SOFT_SHADOW");
+        switch (mainLight.shadows)
+        {
+            case LightShadows.None:
+                cs.EnableKeyword("NO_SHADOW");
+                break;
+            case LightShadows.Hard:
+                cs.EnableKeyword("HARD_SHADOW");
+                break;
+            case LightShadows.Soft:
+                cs.EnableKeyword("SOFT_SHADOW");
+                break;
+        }
+
+        ////////////// chapter6_2 //////////////
+        lightImportanceSampling.Init(cs, kernelHandle);
+}
+
+    //////////////// chapter6_1 //////////////
+    void InitSampling()
+    {
+        cs.DisableKeyword("UNIFORM_SAMPLING");
+        cs.DisableKeyword("COSINE_SAMPLING");
+        cs.DisableKeyword("LIGHT_IMPORTANCE_SAMPLING");
+        cs.DisableKeyword("BSDF_IMPORTANCE_SAMPLING");
+        cs.DisableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
+
+        switch (samplingType)
+        {
+            case SamplingType.Uniform:
+                cs.EnableKeyword("UNIFORM_SAMPLING");
+                break;
+            case SamplingType.Cosine:
+                cs.EnableKeyword("COSINE_SAMPLING");
+                break;
+            case SamplingType.LightImportance:
+                cs.EnableKeyword("LIGHT_IMPORTANCE_SAMPLING");
+                break;
+            case SamplingType.BSDFImportance:
+                cs.EnableKeyword("BSDF_IMPORTANCE_SAMPLING");
+                break;
+            case SamplingType.MultipleImportance:
+                cs.EnableKeyword("MULTIPLE_IMPORTANCE_SAMPLING");
+                break;
+        }
     }
 }

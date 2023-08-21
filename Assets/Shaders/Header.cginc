@@ -5,6 +5,10 @@ static const float PI = 3.14159265f;
 static const float INV_PI = 0.31830988618f;
 static const float EPSILON = 1e-8;
 
+float4 lightParameter;          // rgb: direction, a:intensity
+float4 lightColor;
+float4 shadowParameter;         // rgb: color, a:intensity
+
 float4x4 camera2World;
 float4x4 cameraInverseProjection;
 
@@ -64,8 +68,6 @@ RayHit CreateRayHit()
 float4 light;
 // Sphere Light and Aera Light
 float4 lightPosition;
-
-float4 lightColor;
 
 float2 _pixel;
 float seed;
