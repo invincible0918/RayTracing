@@ -4,7 +4,7 @@
 
 #include "Constants.cginc"
 
-uniform int trianglesCount;
+const int trianglesCount;
 
 StructuredBuffer<uint> sortedMortonCodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE````
@@ -32,7 +32,6 @@ inline int delta(int x, int y, int numObjects)
     return -1;
 }
 
-// 1.1
 inline int2 DetermineRange(int numObjects, int idx)
 {
     const int d = sign(delta(idx, idx + 1, numObjects) - delta(idx, idx - 1, numObjects));
@@ -95,29 +94,26 @@ inline int FindSplit(int first, int last)
 [numthreads(THREADS_PER_BLOCK,1,1)]
 void TreeConstructor(uint3 id : SV_DispatchThreadID)
 {
-    const uint threadId = id.x;
+	const uint threadId = id.x;
     const uint _trianglesCount = trianglesCount;
     AllMemoryBarrierWithGroupSync();
 
     if (threadId < _trianglesCount - 1)
     {
+        // 首先根据三角面个数来决定大致范围
         int2 range = DetermineRange(_trianglesCount, threadId);
         const int first = range.x;
         const int last = range.y;
 
-        // Determine where to split the range.
-
+        // 再决定从哪里开始分割
         const int split = FindSplit(first, last);
 
         internalNodes[threadId].index = threadId;
 
-        // Select childA.
+        // 选择开始节点，即first
         if (split == first)
         {
-            const LeafNode node = {
-                threadId,
-                split
-            };
+            const LeafNode node = {threadId, split};
             leafNodes[split] = node;
             internalNodes[threadId].leftNode = split;
             internalNodes[threadId].leftNodeType = LEAF_NODE;
@@ -128,14 +124,10 @@ void TreeConstructor(uint3 id : SV_DispatchThreadID)
             internalNodes[threadId].leftNode = split;
             internalNodes[threadId].leftNodeType = INTERNAL_NODE;
         }
-
-        // Select childB.
+        // 再选择结束节点，即last
         if (split + 1 == last)
         {
-            const LeafNode node = {
-                threadId,
-                split + 1
-            };
+            const LeafNode node = {threadId, split + 1};
             leafNodes[split + 1] = node;
             internalNodes[threadId].rightNode = split + 1;
             internalNodes[threadId].rightNodeType = LEAF_NODE;
@@ -148,7 +140,6 @@ void TreeConstructor(uint3 id : SV_DispatchThreadID)
         }
     }
 }
-
 
 inline AABB MergeAABB(AABB left, AABB right)
 {
@@ -203,6 +194,7 @@ void BVHConstructor(uint3 id : SV_DispatchThreadID)
             {
                 leftAABB = triangleAABB[sortedTriangleIndices[leftId]];
             }
+
             AABB rightAABB;
             if (rightType == INTERNAL_NODE)
             {
@@ -214,7 +206,6 @@ void BVHConstructor(uint3 id : SV_DispatchThreadID)
             }
 
             bvhData[parent] = MergeAABB(leftAABB, rightAABB);
-
             parent = internalNodes[parent].parent;
         }
     }

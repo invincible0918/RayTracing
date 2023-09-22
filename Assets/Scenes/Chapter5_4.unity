@@ -189,7 +189,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: 7b5cba67b348ec449a151eb28fc1b7d2, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: ac36429c4432e9d478bd51797ee1aad4, type: 2}
+      objectReference: {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
     - target: {fileID: 919132149155446097, guid: 7b5cba67b348ec449a151eb28fc1b7d2, type: 3}
       propertyPath: m_Name
       value: roundBox (1)
@@ -233,7 +233,7 @@ Transform:
   m_GameObject: {fileID: 603698546}
   m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 100, y: 100, z: 1}
+  m_LocalScale: {x: 50, y: 50, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 869458919}
@@ -273,7 +273,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 024e0ebc27c29924292246c61107d08f, type: 2}
+  - {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -371,7 +371,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 82357c36762c6764db5ed7938b2d7750, type: 2}
+  - {fileID: 2100000, guid: ec36b74c7906c674db9bc473c88c072a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -455,7 +455,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: c68122a12dcf3d144b3aeeff9290bc3a, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 68ba97197ef68b24cab1420fa986ea66, type: 2}
+      objectReference: {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
     - target: {fileID: 919132149155446097, guid: c68122a12dcf3d144b3aeeff9290bc3a, type: 3}
       propertyPath: m_Name
       value: teapot
@@ -513,18 +513,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 707062024}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 58d7fb00927ad4a66819dcc657ae56b6, type: 3}
+  m_Script: {fileID: 11500000, guid: 9abbc38eefc5bce409980ad6765f60f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   meshParent: {fileID: 707062026}
-  meshDataShader: {fileID: 7200000, guid: 03c0d03215ab2f040b4a4fae6f0a48f2, type: 3}
+  meshDataShader: {fileID: 7200000, guid: 4bd924f50a44b37489f2c13e35443af6, type: 3}
   mesh: {fileID: 0}
   debugDataType: 0
-  debugDepth: 1
   localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
   globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
-  bvhShader: {fileID: 7200000, guid: 54cbbe9726fbbce42ba08f5bded50a16, type: 3}
+  bvhShader: {fileID: 7200000, guid: 335162ce61c4f4c40b7d369936bacfc0, type: 3}
+  debugDepth: 1
 --- !u!1 &784492500
 GameObject:
   m_ObjectHideFlags: 0
@@ -560,7 +560,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -611,14 +611,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 784492500}
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.19839415, y: -0.80023694, z: 0.37315673, w: 0.42545807}
   m_LocalPosition: {x: 3.8947911, y: 2.202166, z: -3.1857443}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+  m_Father: {fileID: 869458919}
+  m_RootOrder: 11
+  m_LocalEulerAnglesHint: {x: 50, y: -124.004, z: 0}
 --- !u!1 &869458918
 GameObject:
   m_ObjectHideFlags: 0
@@ -658,6 +658,7 @@ Transform:
   - {fileID: 1559457611}
   - {fileID: 499977777}
   - {fileID: 1907012396}
+  - {fileID: 784492502}
   m_Father: {fileID: 707062026}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -729,7 +730,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 024e0ebc27c29924292246c61107d08f, type: 2}
+  - {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -827,7 +828,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: fc5b3529f86c7e247beabb32190de7a0, type: 2}
+  - {fileID: 2100000, guid: b67b5781e3a887d4ea14565859948af9, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -923,7 +924,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: 7b5cba67b348ec449a151eb28fc1b7d2, type: 3}
       propertyPath: m_Materials.Array.data[0]
       value: 
-      objectReference: {fileID: 2100000, guid: 98bf4ed53a6ee484292314bd9a467669, type: 2}
+      objectReference: {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
     - target: {fileID: 919132149155446097, guid: 7b5cba67b348ec449a151eb28fc1b7d2, type: 3}
       propertyPath: m_Name
       value: roundBox
@@ -1007,7 +1008,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 024e0ebc27c29924292246c61107d08f, type: 2}
+  - {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1105,7 +1106,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 5d3a61f1010d2b547b8af96d1ec79240, type: 2}
+  - {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1203,7 +1204,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 7ba78ee9a2afd0643b20b4cf3a271b31, type: 2}
+  - {fileID: 2100000, guid: edb6ce44c13cbbd4dae77fae98862011, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1244,7 +1245,6 @@ GameObject:
   - component: {fileID: 2074304800}
   - component: {fileID: 2074304799}
   - component: {fileID: 2074304798}
-  - component: {fileID: 2074304797}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
@@ -1252,19 +1252,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!135 &2074304797
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2074304796}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &2074304798
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1285,7 +1272,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 2b2a0b6b1b3d897458a326572e006239, type: 2}
+  - {fileID: 2100000, guid: 29794fa8125d0904281df89d5dfbe9c1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1323,8 +1310,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2074304796}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.608, y: 7.534, z: -3.67}
-  m_LocalScale: {x: 5, y: 5, z: 5}
+  m_LocalPosition: {x: 5.608, y: 8.01, z: -3.67}
+  m_LocalScale: {x: 3, y: 3, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 869458919}
@@ -1430,13 +1417,12 @@ MonoBehaviour:
   cs: {fileID: 7200000, guid: 11b162dd017bb404698510b6e20d6fc6, type: 3}
   rt: {fileID: 0}
   meshCollector: {fileID: 0}
-  skyboxMat: {fileID: 2100000, guid: ad7258fa14363d645b06a83072b6c686, type: 2}
+  skyboxMat: {fileID: 2100000, guid: a9c791d590ae7774b9414e7849fdb066, type: 2}
   mainLight: {fileID: 784492501}
   shadowColor: {r: 0.21568629, g: 0.24313727, b: 0.2901961, a: 1}
   shadowIntensity: 1
-  convergedRT: {fileID: 0}
   aliasing: 1
   samplePrePixel: 0
+  convergedRT: {fileID: 0}
   bvh: {fileID: 707062027}
   useBVH: 1
-  shadowType: 0

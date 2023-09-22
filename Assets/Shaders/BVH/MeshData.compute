@@ -3,20 +3,30 @@
 
 #include "Constants.cginc"
 
+////////////// chapter4_4 //////////////
 // 1. 构造 AABB
 ByteAddressBuffer indexBuffer;
 ByteAddressBuffer vertexBuffer;
-StructuredBuffer<uint> materialIndexBuffer;// 这里存贮的是每一个三角面的材质id
-StructuredBuffer<int2> shadowIndexBuffer;// 这里存贮的是每一个三角面的cast/receive shadow
 RWStructuredBuffer<AABB> aabbBuffer;
-RWStructuredBuffer<Triangle> triangleDataBuffer;
+
+const int trianglesCount;
+
+// 2. 计算morton code
+float3 encompassingAABBMin;
+float3 encompassingAABBMax;
+RWStructuredBuffer<uint> mortonCodeBuffer;
+
+////////////// chapter4_5 //////////////
+StructuredBuffer<uint> materialIndexBuffer;		// 这里存贮的是每一个三角面的材质id
+StructuredBuffer<int2> shadowIndexBuffer;		// 这里存贮的是每一个三角面的cast/receive shadow
+
 RWStructuredBuffer<uint> triangleIndexBuffer;
+RWStructuredBuffer<Triangle> triangleDataBuffer;
 
-uniform int trianglesCount;
-
+////////////// chapter4_4 //////////////
 void LoadVertex(uint index, out float3 position, out float3 normal, out float3 tangent, out float2 uv)
 {
-	uint pi = index * 11 * 4; // index * (3[position.xyz] + 3[normal.xyz] + 3[tangent.xyz] + 2[uv.xy]) * 4[bytes]
+	uint pi = index * 11 * 4;// index * (3[position.xyz] + 3[normal.xyz] + 3[tangent.xyz] + 2[uv.xy]) * 4[bytes]
 	uint ni = pi + 3 * 4;
 	uint ti = pi + 6 * 4;
 	uint uvi = pi + 9 * 4;
@@ -27,12 +37,7 @@ void LoadVertex(uint index, out float3 position, out float3 normal, out float3 t
 	uv = asfloat(vertexBuffer.Load2(uvi));
 }
 
-// 2. 计算 MortonCode
-float3 encompassingAABBMin;
-float3 encompassingAABBMax;
-RWStructuredBuffer<uint> mortonCodeBuffer;
-
-// 将一个10位的整数扩展为30位, 每个位后插入2个零。
+// 将一个10位的整数扩展为30位，每个位后插入2个0
 uint ExpandBits(uint v)
 {
     v = (v * 0x00010001u) & 0xFF0000FFu;
@@ -42,41 +47,41 @@ uint ExpandBits(uint v)
     return v;
 }
 
-//计算一个30位的莫顿码, 给定三维点位于单位立方体[0,1]内。
+// 计算一个30位的morton code，使用给定三维点（位于单位立方体内，并归一化到 0-1空间）
 uint MortonCode(float3 v)
 {
-    v.x = min(max(v.x * 1024.0f, 0.0f), 1023.0f);
+	v.x = min(max(v.x * 1024.0f, 0.0f), 1023.0f);
     v.y = min(max(v.y * 1024.0f, 0.0f), 1023.0f);
     v.z = min(max(v.z * 1024.0f, 0.0f), 1023.0f);
-    uint xx = ExpandBits((uint) v.x);
+	uint xx = ExpandBits((uint) v.x);
     uint yy = ExpandBits((uint) v.y);
     uint zz = ExpandBits((uint) v.z);
-    return (xx * 4 + yy * 2 + zz);
+	return (xx * 4 + yy * 2 + zz);
 }
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
 void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
-//void Calculate(uint id : SV_DispatchThreadID)
 {
-	const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
+    const uint id = gid.x * THREADS_PER_BLOCK + tid.x;
 	if (id >= trianglesCount)
 		return;
 
 	AllMemoryBarrierWithGroupSync();
-    // 读取顶点索引
+
+	// 读取顶点索引
 	uint3 triIndex = indexBuffer.Load3(id * 3 * 4); // id * 3[triangle vertices] * 4[bytes]
 
-    // 读取原始position
-	float3 p0, n0, p1, n1, p2, n2, t0, t1, t2;
+	// 读取顶点position
+	float3 p0, n0, t0, p1, n1, t1, p2, n2, t2;
 	float2 uv0, uv1, uv2;
-	LoadVertex(triIndex.x, p0, n0, t0, uv0);
-	LoadVertex(triIndex.y, p1, n1, t1, uv1);
-	LoadVertex(triIndex.z, p2, n2, t2, uv2);
+	LoadVertex(triIndex.x, /*out*/p0, /*out*/n0, /*out*/t0, /*out*/uv0);
+	LoadVertex(triIndex.y, /*out*/p1, /*out*/n1, /*out*/t1, /*out*/uv1);
+	LoadVertex(triIndex.z, /*out*/p2, /*out*/n2, /*out*/t2, /*out*/uv2);
 
 	// 1. 构造 AABB
 	AABB aabb = (AABB)0;
 
-	// 最小最大值再做一个偏移，避免出现最大最小值是相同的问题，否则平面的模型绘制不出来
+	// 最小值最大值做一个 0.001 的偏移，避免出现最大最小值是同一个值的问题, 否则一个平面的模型就会绘制不出来
 	aabb.min = float3(
 		min(min(p0.x, p1.x), p2.x) - 0.001f,
 		min(min(p0.y, p1.y), p2.y) - 0.001f,
@@ -89,32 +94,38 @@ void Calculate(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 		);
 
 	aabbBuffer[id] = aabb;
+
+	// 2. 计算morton code
+	float3 center = (aabb.min + aabb.max) * 0.5;
+	float3 normalized = (center - encompassingAABBMin) / (encompassingAABBMax - encompassingAABBMin);
+	
+	mortonCodeBuffer[id] = MortonCode(normalized);
+
+	////////////// chapter4_5 //////////////
+	// 三角面的索引为当前线程的id
 	triangleIndexBuffer[id] = id;
 
-	//// 2. 构造 三角面数据
+	// 构造三角面数据
 	Triangle tri = (Triangle)0; 
-
 	tri.point0 = p0;	
 	tri.point1 = p1;
 	tri.point2 = p2;
+
 	tri.normal0 = n0;
 	tri.normal1 = n1;
 	tri.normal2 = n2;
+
 	tri.tangent0 = t0;
 	tri.tangent1 = t1;
 	tri.tangent2 = t2;
+
 	tri.uv0 = uv0;
 	tri.uv1 = uv1;
 	tri.uv2 = uv2;
+
 	tri.materialIndex = materialIndexBuffer[id] ;
 	tri.castShadow = shadowIndexBuffer[id][0];
 	tri.receiveShadow = shadowIndexBuffer[id][0];
 
 	triangleDataBuffer[id] = tri;
-
-	// 2. 计算 MortonCode
-	float3 center = (aabb.min + aabb.max) * 0.5;
-	float3 normalized = (center - encompassingAABBMin) / (encompassingAABBMax - encompassingAABBMin);
-
-	mortonCodeBuffer[id] = MortonCode(normalized);
 }

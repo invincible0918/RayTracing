@@ -3,34 +3,40 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-public class MeshBufferContainer/* : IDisposable*/
+public class MeshBufferContainer
 {
-    // TODO reduce scene data for finding AABB scene in runtime
-
+    // ¶¨Òå°üº¬Õû¸ö³¡¾°µÄAABB£¬
     static readonly float size = 125f;
-
     static readonly AABB Whole = new AABB()
     {
         min = Vector3.one * -1 * size,
         max = Vector3.one * size
     };
 
+    // meshµÄbounds£¬Ê¹ÓÃboundsÀ´¼ÆËãAABB
     public Bounds bounds => _bounds;
+    // Èı½ÇÃæµÄ×ÜÊı
     public uint trianglesLength => _trianglesLength;
+    // Ã¿¸öÈı½ÇÃæµÄÄª¶ÙÂë
     public ComputeBuffer mortonCodeBuffer => _mortonCodeBuffer.computeBuffer;
+    // Èı½ÇÃæÊı¾İ
     public ComputeBuffer triangleIndexBuffer => _triangleIndexBuffer.computeBuffer;
     public ComputeBuffer triangleDataBuffer => _triangleDataBuffer.computeBuffer;
     public ComputeBuffer triangleAABBBuffer => _triangleAABBBuffer.computeBuffer;
+    // BVHÊı¾İ
     public ComputeBuffer bvhDataBuffer => _bvhDataBuffer.computeBuffer;
     public ComputeBuffer bvhLeafNodeBuffer => _bvhLeafNodeBuffer.computeBuffer;
     public ComputeBuffer bvhInternalNodeBuffer => _bvhInternalNodeBuffer.computeBuffer;
+    // Ê¹ÓÃUnityµÄAdvanced Mesh API£¬Í¨¹ıÄÚ´æ·ÃÎÊmesh
     public GraphicsBuffer indexBuffer => _indexBuffer;
     public GraphicsBuffer vertexBuffer => _vertexBuffer;
+    // ²ÄÖÊµÄË÷Òı
     public ComputeBuffer materialIndexBuffer => _materialIndexBuffer.computeBuffer;
+    // Ã¿¸öÈı½ÇÃæÊÇ·ñ½ÓÊÜ/²úÉúÒõÓ°
     public ComputeBuffer shadowIndexBuffer => _shadowIndexBuffer.computeBuffer;
 
-    private uint _trianglesLength;
     private Bounds _bounds;
+    private uint _trianglesLength;
     private DataBuffer<uint> _mortonCodeBuffer;
     private DataBuffer<uint> _triangleIndexBuffer;
     private DataBuffer<Triangle> _triangleDataBuffer;
@@ -43,8 +49,7 @@ public class MeshBufferContainer/* : IDisposable*/
     private DataBuffer<uint> _materialIndexBuffer;
     private DataBuffer<Vector2Int> _shadowIndexBuffer;
 
-
-    public MeshBufferContainer(Mesh mesh, List<uint> materialIndices, List<Vector2Int> shadowIndices) // TODO multiple meshes
+    public MeshBufferContainer(Mesh mesh, List<uint> materialIndices, List<Vector2Int> shadowIndices)
     {
         if (Marshal.SizeOf(typeof(Triangle)) != 192)
         {
@@ -69,17 +74,17 @@ public class MeshBufferContainer/* : IDisposable*/
         {
             min = Whole.min,
             max = Whole.max
-        };// ä¸è¦ä½¿ç”¨çœŸå®çš„mesh boundsï¼Œå› ä¸ºæ•°å€¼å¤ªå°äº†ï¼Œmesh.bounds;
+        }; // ²»ÒªÊ¹ÓÃÕæÊµµÄ³¡¾°µÄmesh bounds£¬ÒòÎª¿ÉÄÜmesh.boundsµÄÊıÖµÌ«Ğ¡
         _trianglesLength = (uint)mesh.triangles.Length / 3;
 
         _indexBuffer = mesh.GetIndexBuffer();
         _vertexBuffer = mesh.GetVertexBuffer(0);
 
-        // è¿™é‡Œå­˜è´®çš„æ˜¯æ¯ä¸€ä¸ªä¸‰è§’é¢çš„æè´¨id
+        // ÕâÀï´æ´¢µÄÊÇÃ¿Ò»¸öÈı½ÇÃæµÄ²ÄÖÊid
         _materialIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
         _materialIndexBuffer.SetData(materialIndices.ToArray());
 
-        // è¿™é‡Œå­˜è´®çš„æ˜¯æ¯ä¸€ä¸ªä¸‰è§’é¢çš„é˜´å½±å±æ€§
+        // ÕâÀï´æ´¢µÄÊÇÃ¿Ò»¸öÈı½ÇÃæµÄÒõÓ°ÊôĞÔ
         _shadowIndexBuffer = new DataBuffer<Vector2Int>(Constants.DATA_ARRAY_COUNT, Vector2Int.one);
         _shadowIndexBuffer.SetData(shadowIndices.ToArray());
     }
@@ -87,7 +92,7 @@ public class MeshBufferContainer/* : IDisposable*/
     public void DistributeMortonCode()
     {
         _mortonCodeBuffer.GetData(out uint[] values);
-        
+
         uint newCurrentValue = 0;
         uint oldCurrentValue = values[0];
         values[0] = newCurrentValue;
@@ -101,49 +106,11 @@ public class MeshBufferContainer/* : IDisposable*/
         _mortonCodeBuffer.SetData(values);
     }
 
-    public void GetAllGpuData()
-    {
-        //keysBuffer.GetData();
-        //_triangleIndexBuffer.GetData();
-        //_triangleDataBuffer.GetData();
-        //_triangleAABBBuffer.GetData();
-        //_bvhDataBuffer.GetData();
-        //_bvhLeafNodeBuffer.GetData();
-        //_bvhInternalNodeBuffer.GetData();
-        //_materialIndexBuffer.GetData();
-        //_shadowIndexBuffer.GetData();
-
-        // debug
-        //for (uint i = 0; i < _trianglesLength; i++)
-        //{
-        //    if (_bvhLeafNodeBuffer[i].index == 0xFFFFFFFF && _bvhLeafNodeBuffer[i].parent == 0xFFFFFFFF)
-        //    {
-        //        Debug.LogErrorFormat("LEAF CORRUPTED {0}", i);
-        //    }
-        //}
-
-        //for (uint i = 0; i < _trianglesLength - 1; i++)
-        //{
-        //    if (_bvhInternalNodeBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodeBuffer[i].parent == 0xFFFFFFFF)
-        //    {
-        //        Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
-        //    }
-        //}
-    }
-
     public void PrintData()
     {
-        //Debug.Log("_triangleIndexBuffer: " + _triangleIndexBuffer);
-        //Debug.Log("_triangleAABBBuffer: " + _triangleAABBBuffer);
-        //Debug.Log("_bvhInternalNodeBuffer: " + _bvhInternalNodeBuffer);
-        //Debug.Log("_bvhLeafNodeBuffer: " + _bvhLeafNodeBuffer);
-        //Debug.Log("_bvhDataBuffer: " + _bvhDataBuffer);
-        //Debug.Log("_triangleDataBuffer: " + _triangleDataBuffer);
-        //Debug.Log("keysBuffer: " + keysBuffer);
-        //Debug.Log("_materialIndexBuffer: " + _materialIndexBuffer);
-        //Debug.Log("_shadowIndexBuffer: " + _shadowIndexBuffer);
+        Debug.Log("_mortonCodeBuffer: " + _mortonCodeBuffer);
+        Debug.Log("_triangleIndexBuffer: " + _triangleIndexBuffer);
     }
-
 
     public void Dispose()
     {

@@ -14,6 +14,10 @@ Shader "MyCustom/MyPBR"
         [Gamma] _Metallic("Metallic", Range(0.0, 1.0)) = 0.0
         _MetallicGlossMap("Metallic", 2D) = "white" {}
 
+        ////////////// chapter6_5 //////////////
+        _IOR("IOR", Range(1.0, 2.0)) = 1.1
+        _MaterialType("Material Type", Range(0.0, 5.0)) = 0.0
+
         [ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
         [ToggleOff] _GlossyReflections("Glossy Reflections", Float) = 1.0
 
@@ -241,5 +245,5 @@ Shader "MyCustom/MyPBR"
 
 
     FallBack "VertexLit"
-    CustomEditor "StandardShaderGUI"
+    CustomEditor "MyPBRShaderGUI"
 }

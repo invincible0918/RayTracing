@@ -1,31 +1,23 @@
 ﻿#ifndef _SHADE_
 #define _SHADE_
 
-//#include "WhittedRayTracing.cginc"
+////////////// chapter3_1 //////////////
+#include "WhittedRayTracing.cginc"
 //////////////// chapter5_2 //////////////
 #include "ImportanceSampling.cginc"
-//#define FUNCTION_BSDF UniformSampling
-//////////////// chapter6_1 //////////////
 #if defined(UNIFORM_SAMPLING)
-#define FUNCTION_BSDF UniformSampling
-
+	#define FUNCTION_BSDF UniformSampling
 #elif defined(COSINE_SAMPLING)
-#define FUNCTION_BSDF CosineSampling
-
+	#define FUNCTION_BSDF CosineWeightedSampling
 #elif defined(LIGHT_IMPORTANCE_SAMPLING)
-#define FUNCTION_BSDF LightImportanceSampling
-
+	#define FUNCTION_BSDF LightImportanceSampling
 #elif defined(BSDF_IMPORTANCE_SAMPLING)
-#define FUNCTION_BSDF BSDFImportanceSampling
-
+	#define FUNCTION_BSDF BSDFImportanceSampling
 #elif defined(MULTIPLE_IMPORTANCE_SAMPLING)
-#define FUNCTION_BSDF MultipleImportanceSampling
-
+	#define FUNCTION_BSDF MultipleImportanceSampling
 #else
-#define FUNCTION_BSDF MultipleImportanceSampling
-
+	#define FUNCTION_BSDF MultipleImportanceSampling
 #endif
-
 ////////////// chapter3_1 //////////////
 TextureCube<float4> skyboxCube;
 SamplerState sampler_LinearClamp;
@@ -37,63 +29,90 @@ float skyboxExposure;
 ////////////// chapter5_3 //////////////
 float3 RotateAroundYInDegrees(float3 dir, float degrees)
 {
-    float alpha = degrees * PI / 180.0;
-    float sina, cosa;
+	float alpha = degrees * PI / 180.0;
+	float sina, cosa;
     sincos(alpha, sina, cosa);
-    float2x2 m = float2x2(cosa, -sina, sina, cosa);
-    return float3(mul(m, dir.xz), dir.y).xzy;
+
+	float2x2 m = float2x2(cosa, -sina, sina, cosa);
+	return float3(mul(m, dir.xz), dir.y).xzy;
 }
 
+static const float SPECCUBE_LOD_STEPS = 10;
+half PerceptualRoughnessToMipmapLevel(half perceptualRoughness)
+{
+    return perceptualRoughness * SPECCUBE_LOD_STEPS;
+}
+
+////////////// chapter2_1 //////////////
 float3 Shade(RayHit hit, inout Ray ray)
 {
-	////////////// chapter2_1 //////////////
-	//return 1;
-
-	////////////// chapter2_2 //////////////
 	if (hit.distance < 1.#INF)
 	{
-		//return ray.direction;
-		//return hit.normal;
-
-		//////////////// chapter3_1 //////////////
-		//// 考虑 能量的衰减
+		// 考虑光能的衰减
 		//ray.energy *= WhittedRayTracing(hit, /*inout */ray);
-		////// 不考虑发光材质，直接return 0
-		////return 0;
 
 		////////////////// chapter3_3 //////////////
-		//if (any(ray.energy))   // any(x): x!=0 return true
+		//// return 0是因为该光线和物体交互，物体是没有自发光的，即不考虑发光材质
+		//return 0;
+		//////////////// chapter5_2 //////////////
+		//if (any(hit.emissionColor))   // any(x): x!=0 return true
 		//	return hit.emissionColor;
 		//else
 		//	return 0;
-		//////////////// chapter5_2 //////////////
 		if (hit.materialType == 2)  // 如果emission color有非0值，则直接返回emission color
             return hit.emissionColor;
-        else
-        {
-            ray.energy *= FUNCTION_BSDF(hit, ray);
+		else if (hit.materialType == 4)
+		{
+			ray.origin = hit.position - hit.normal * 0.001f;
+			//ray.direction = Tangent2World(theta, phi, direction);
+			return 0;
+		}
+		else
+		{
+			ray.energy *= FUNCTION_BSDF(hit, /*inout */ray);
             return 0;
-        }
+		}
 	}
 	else
 	{
-		////////////// chapter3_1 //////////////
-		// 此时要处理当射线没有交点的情况了，不能直接return 0，需要返回一个天光
 		ray.energy = 0.0f;
 
-		////////////// chapter5_3 //////////////
+		// 如果射线和场景没有交点，则需要采集cubemap
 		//float3 dir = ray.direction;
-		//float3 skyboxColor = skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).xyz;
-		
+
+		//float perceptualRoughness = SmoothnessToPerceptualRoughness (hit.smoothness);
+  //      perceptualRoughness = perceptualRoughness * (1.7 - 0.7 * perceptualRoughness);
+  //      half mip = PerceptualRoughnessToMipmapLevel(perceptualRoughness);
+
+		////////////// chapter5_3 //////////////
 		float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
-		////////////// chapter5_4 //////////////
-		float3 skyboxColor = 0.5;// 测试天光
-		//float3 skyboxColor = skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).xyz;
-		skyboxColor = skyboxColor * skyboxExposure;
+		float3 skyboxColor = skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).rgb;
 
-        return skyboxColor;
+		//////////////// chapter6_6 //////////////
+		//skyboxColor *= pow(saturate(skyboxExposure), 2.2);
+		skyboxColor = SRGBToLinear(skyboxColor);
+		skyboxColor = pow(saturate(skyboxColor), skyboxExposure);
+
+		return skyboxColor;
 	}
 }
+
+////////////// chapter7_1 //////////////
+float3 AmbientOcclusionShade(RayHit hit, inout Ray ray)
+{
+	if (hit.distance < 1.#INF)
+	{
+		CosineWeightedSampling(hit, /*inout */ray);
+		ray.energy *= 1;
+        return 0;
+	}
+	else
+	{
+		ray.energy = 0.0f;
+		return 1;
+	}
+}
+
 
 #endif

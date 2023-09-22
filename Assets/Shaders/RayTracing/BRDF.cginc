@@ -1,19 +1,11 @@
-﻿#ifndef BSDF_INCLUDE
-#define BSDF_INCLUDE
+﻿#ifndef _BRDF_
+#define _BRDF_
 
 static const float4 COLOR_SPACE_DIELECTRIC_SPEC  = half4(0.04, 0.04, 0.04, 1.0 - 0.04); // standard dielectric reflectivity coef at incident angle (= 4%)
 
-/////////////////////////////////////////////////////////////////////////////
-//////////////////////// Importance sampling BRDF ///////////////////////////
-/////////////////////////////////////////////////////////////////////////////
 inline half Pow5(half x)
 {
     return x * x * x * x * x;
-}
-
-float3 LitDiffuseBRDF(float3 albedo)
-{
-    return albedo / PI;
 }
 
 inline half OneMinusReflectivityFromMetallic(half metallic)
@@ -27,6 +19,16 @@ inline half OneMinusReflectivityFromMetallic(half metallic)
     return oneMinusDielectricSpec - metallic * oneMinusDielectricSpec;
 }
 
+float SmoothnessToPerceptualRoughness(float smoothness)
+{
+    return (1 - smoothness);
+}
+
+float PerceptualRoughnessToRoughness(float perceptualRoughness)
+{
+    return perceptualRoughness * perceptualRoughness;
+}
+
 inline half3 DiffuseAndSpecularFromMetallic (half3 albedo, half metallic, out half3 specColor, out half oneMinusReflectivity)
 {
     specColor = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb, albedo, metallic);
@@ -34,8 +36,6 @@ inline half3 DiffuseAndSpecularFromMetallic (half3 albedo, half metallic, out ha
     return albedo * oneMinusReflectivity;
 }
 
-// Diffuse BRDF
-// Note: Disney diffuse must be multiply by diffuseAlbedo / PI. This is done outside of this function.
 half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
 {
     half fd90 = 0.5 + 2 * LdotH * LdotH * perceptualRoughness;
@@ -59,17 +59,6 @@ float3 DiffuseBRDF(float3 albedo, float3 normal, float3 viewDir, float3 halfDir,
     float3 brdf =  albedo * diffuseTerm / PI;
     pdf = nl / PI;
     return brdf;
-}
-
-// Specular BRDF
-float SmoothnessToPerceptualRoughness(float smoothness)
-{
-    return (1 - smoothness);
-}
-
-float PerceptualRoughnessToRoughness(float perceptualRoughness)
-{
-    return perceptualRoughness * perceptualRoughness;
 }
 
 // 和unity方法同名
@@ -116,8 +105,8 @@ float GeometryKelemen(float LoH)
 
 float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 {
-    float NdotV = abs(dot(N, V));
-    float NdotL = abs(dot(N, L));
+    float NdotV = saturate(dot(N, V));
+    float NdotL = saturate(dot(N, L));
     float ggx2 = GeometrySchlickGGX(NdotV, roughness);
     float ggx1 = GeometrySchlickGGX(NdotL, roughness);
 
@@ -136,9 +125,8 @@ float3 SpecularBRDF(float3 specColor, float3 normal, float3 viewDir, float3 half
     half hv = saturate(dot(halfDir, viewDir));
 
     float D = GGXTerm(nh, roughness);
-    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
-    //F = FresnelTerm(F0, hv);
     F = FresnelTerm(specColor, hv);
+
     //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
     float G = GeometrySmith(normal, viewDir, lightDir, roughness);
 
@@ -148,104 +136,71 @@ float3 SpecularBRDF(float3 specColor, float3 normal, float3 viewDir, float3 half
 
     pdf = D * nh / (4.0 * hv);
     return brdf;
-
-    //if (pdf > 0)
-    //    return brdf / pdf * nl;
-    //else
-    //    return 1;
 }
 
-float3 ClearCoatBRDF(float3 specColor, float3 normal, float3 viewDir, float3 halfDir, float3 lightDir, float roughness, out float3 F, out float pdf, out float3 Fc, out float3 brdfc, out float pdfc)
+void BRDF(uint materialType, 
+    float3 viewDir, 
+    float3 halfDir, 
+    float3 lightDir, 
+    float3 albedo, 
+    float3 normal, 
+    float metallic, 
+    float perceptualRoughness, 
+    float roughness, 
+    float diffuseRatio, 
+    float specularRoatio, 
+    out float3 func, 
+    out float pdf)
 {
-    // 主要参考：https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
-    // https://google.github.io/filament//Materials.md.html#materialmodels/litmodel/clearcoat
-    half nv = abs(dot(normal, viewDir));    // This abs allow to limit artifact, 这条非常重要，使用sat会在边缘产生奇怪的高光
-    half nl = saturate(dot(normal, lightDir));
-    float nh = saturate(dot(normal, halfDir));
+    // 针对于BRDF的重要性采样，采用的Cook torrence微表面模型
+    // fr = DFG / (4 * (n, i) * (n, o))
 
-    half lv = saturate(dot(lightDir, viewDir));
-    half lh = saturate(dot(lightDir, halfDir));
-
-    half hv = saturate(dot(halfDir, viewDir));
-
-    // clear coat layer
-    // remapping and linearization of clear coat roughness
-    float clearCoatRoughness = clamp(roughness, 0.089, 1.0);
-
-    // clear coat BRDF
-    float Dc = GGXTerm(nh, clearCoatRoughness);
-    //float f0 = (1.5 - 1)^2 / (1.5 + 1)^2 = 0.04, https://google.github.io/filament/Filament.md.html#materialsystem/clearcoatmodel
-    float F0 = 0.04;
-    Fc = FresnelTerm(F0, lh);
-    float Gc = GeometryKelemen(lh);
-
-    // base layer
-    float D = GGXTerm(nh, roughness);
-    //float3 F0 = lerp (COLOR_SPACE_DIELECTRIC_SPEC.rgb * specColor, albedo, metallic);
-    //F = FresnelTerm(F0, hv);
-    float3 F0base = pow(1 - 5 * sqrt(Fc), 2) / pow(5 * sqrt(Fc), 2);
-    F = FresnelTerm(F0base * specColor, lh);
-    //使用unity的版本会产生大量噪点，这里使用的是unreal的G，float G = SmithJointGGXVisibilityTerm (nl, nv, roughness);
-    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
-
-    float3 nominator = D * G * F;
-    float denominator = 4.0 * nv * nl + 0.001;
-    float3 brdf = nominator / denominator;
-
-    pdf = D * nh / (4.0 * hv);
-
-    // clear coat output
-    brdfc = Dc * Gc * Fc;
-    pdfc = nl / PI;//Dc * nh / (4.0 * hv);
-
-    return brdf;
-}
-
-void BRDF(uint materialType, float3 viewDir, float3 halfDir, float3 lightDir, float3 albedo, float3 normal, float metallic, float perceptualRoughness, float roughness, float diffuseRatio, float specularRoatio, out float3 func, out float pdf)
-{
-    // 准备计算用参数
+    // 以下计算参考unity的standard pbr shader
     float oneMinusReflectivity;
     float3 specColor;
+
+    // 漫反射
     float3 diffuse = DiffuseAndSpecularFromMetallic(albedo, metallic, /*out*/ specColor, /*out*/ oneMinusReflectivity);
-    //// shader relies on pre-multiply alpha-blend (_SrcBlend = One, _DstBlend = OneMinusSrcAlpha)
-    //// this is necessary to handle transparency in physically correct way - only diffuse component gets affected by alpha
-    //half outputAlpha;
-    //s.Albedo = PreMultiplyAlpha (s.Albedo, s.Alpha, oneMinusReflectivity, /*out*/ outputAlpha);
-
     float diffusePdf;
-    float3 diffuseBRDF = DiffuseBRDF(diffuse, normal, viewDir, halfDir, lightDir, perceptualRoughness, diffusePdf);
+    float3 diffuseBRDF = DiffuseBRDF(diffuse, normal, viewDir, halfDir, lightDir, perceptualRoughness, /*out*/ diffusePdf);
 
-    float3 specularBRDF;
-    float specularPdf;
+    // 镜面反射
     float3 F;
-    float3 Fc = 0;
-    float3 clearCoatBRDF = 0;
-    float clearCoatPdf = 0;
-
-    if (materialType == 3)
-        specularBRDF = ClearCoatBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf, Fc, clearCoatBRDF, clearCoatPdf);
-    else
-        specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, F, specularPdf);
+    float specularPdf;
+    float3 specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, /*out*/ F, /*out*/ specularPdf);
 
     float3 kS = F;
     float3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
 
-    //float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
-    float3 totalBRDF = ((diffuseBRDF * kD + specularBRDF * (1 - Fc)) * (1 - Fc) + clearCoatBRDF) * saturate(dot(normal, lightDir));
-    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio + clearCoatPdf;
-
-    //totalBrdf += pow(clearCoat, 10);
-    //if (diffusePdf > 0)
-    //    return diffuseBRDF/diffusePdf * saturate(dot(hit.normal, lightDir));
-    //else
-    //    return 1;
-
+    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
+    
     func = totalBRDF;
     pdf = totalPdf;
+}
 
-    //func = saturate(dot(normal, lightDir));
-    //pdf = 1;
+////////////// chapter6_6 //////////////
+float FresnelReflectAmount(float n1, float n2, float3 normal, float3 incident, float f0, float f90)
+{
+    // Schlick aproximation
+    float r0 = (n1 - n2) / (n1 + n2);
+    r0 *= r0;
+    float cosX = -dot(normal, incident);
+    if (n1 > n2)
+    {
+        float n = n1 / n2;
+        float sinT2 = n * n * (1.0 - cosX * cosX);
+        // Total internal reflection
+        if (sinT2 > 1.0)
+            return f90;
+        cosX = sqrt(1.0 - sinT2);
+    }
+    float x = 1.0 - cosX;
+    float ret = r0 + (1.0 - r0) * x * x * x * x * x;
+
+    // adjust reflect multiplier for object reflectivity
+    return lerp(f0, f90, ret);
 }
 
 #endif

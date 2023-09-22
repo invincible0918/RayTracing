@@ -1,35 +1,13 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
+#include "./Assets/Shaders/RayTracing/Header.cginc"
+
 RWStructuredBuffer<float3> directions;
 
-float2 _pixel;
-float seed;
-int sampleType;
-float3 normal;
-static const float PI = 3.14159265f;
-static const float EPSILON = 1e-8;
+const float3 normal;
+int samplingType;
 
-// light start
-float4 sphereLight;
-// light end
-
-// range: 0~1
-float rand()
-{
-    float result = frac(sin(seed / 100.0f * dot(_pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
-    seed += 1.0f;
-    return result;
-}
-
-float2 hash2()
-{
-    return frac(sin(_pixel) * float2(43758.5453123, 22578.1459123));
-}
-
-// Add Monte Carlo integration
 float3x3 GetTangentSpace(float3 normal)
 {
     // Choose a helper vector for the cross product
@@ -42,94 +20,51 @@ float3x3 GetTangentSpace(float3 normal)
     return float3x3(tangent, binormal, normal);
 }
 
-// https://zhuanlan.zhihu.com/p/437461225
-float3 SampleHemisphere(float3 normal)
+float3 Tangent2World(float theta, float phi, float3 direction)
 {
-    //// Uniformly sample hemisphere direction
-    //float theta = 2 * PI * rand();
-    //float phi = 0.5 * PI * rand(); // semi-sphere
-
-    float theta = 2 * PI * rand();
-    float phi = 0.5 * PI * rand(); // semi-sphere
-
-    //theta = 2 * PI * rand();
-    //phi = acos(sqrt(1 - rand()));
-
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(normal));
-
-    //// Uniformly sample hemisphere direction
-    //float cosTheta = rand();
-    //float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-    //float phi = 2 * PI * rand();
-    //float3 tangentSpaceDir = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    //// Transform direction to world space
-    //return mul(tangentSpaceDir, GetTangentSpace(normal));
+    float3 localSpaceDir = float3(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
+    return normalize(mul(localSpaceDir, GetTangentSpace(direction)));
 }
 
-float3 UniformSampleHemisphere(float3 normal)
+float3 HemisphereSampling(float3 normal)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
+    float theta = 0.5 * PI * Rand();
+    float phi = 2.0 * PI * Rand();
 
-    float r = sqrt(1 - u.x * u.x);
-    float phi = 2.0 * PI * u.y;
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(r * sin(phi) * B + u.x * normal + r * cos(phi) * T);
+    return Tangent2World(theta, phi, normal);
 }
 
-float3 CosineSampleHemisphere(float3 normal)
+float3 UniformSampling(float3 normal)
 {
-    float2 u = hash2();
-    u = float2(rand(), rand());
+    float theta = acos(1 - Rand());
+    float phi = 2.0 * PI * Rand();
 
-    float r = sqrt(u.x);
-    float theta = 2.0 * PI * u.y;
-
-    float3  B = normalize(cross(normal, float3(0.0, 0.0, 1.0)));
-    float3  T = cross(B, normal);
-
-    return normalize(r * sin(theta) * B + sqrt(1.0 - u.x) * normal + r * cos(theta) * T);
+    return Tangent2World(theta, phi, normal);
 }
 
-float3 LightSampleHemisphere(float4 sphereLight, float3 position, float3 normal)
+float3 CosineWeightedSampling(float3 normal)
 {
-    float3 lightPosition = sphereLight.xyz;
-    float lightRadius = sphereLight.w;
-    float maxCos = sqrt(1 - pow(lightRadius / length(lightPosition - position), 2));
+    float theta = acos(sqrt(1 - Rand()));
+    float phi = 2.0 * PI * Rand();
 
-    float2 u = float2(rand(), rand());
-
-    float theta = acos(1 - maxCos * (u.x - 1));
-    float phi = 2.0 * PI * u.y;
-
-
-    float3 localSpaceDir = float3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
-    // Transform direction to world space
-    return mul(localSpaceDir, GetTangentSpace(normal));
+    return Tangent2World(theta, phi, normal);
 }
 
-
-[numthreads(32, 1, 1)]
+[numthreads(8, 1, 1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     _pixel = id.xy;
 
-    float3 direction;
-    if (sampleType == 0)
-        direction = SampleHemisphere(normal);
-    else if (sampleType == 1)
-        direction = UniformSampleHemisphere(normal);
-    else if (sampleType == 2)
-        direction = CosineSampleHemisphere(normal); 
-    //else if (sampleType == 2)
-    //    direction = LightSampleHemisphere(sphereLight, normal); 
-    else
-        direction = float3(normal);
+    SetSeed();
+
+    float3 direction = 0;
+
+    if (samplingType == 0)
+        direction = HemisphereSampling(normal);
+    else if (samplingType == 1)
+        direction = UniformSampling(normal);
+    else if (samplingType == 2)
+        direction = CosineWeightedSampling(normal);
 
     directions[id.x] = direction;
 }

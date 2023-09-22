@@ -4,72 +4,42 @@ using UnityEngine;
 
 public class SampleHemisphere : MonoBehaviour
 {
-    public enum SampleType
+    public enum SamplingType
     {
-        Semi,
+        HemiSphere,
         Uniform,
         CosWeighted,
-        Light,
-        BRDF,
-        MultipleImportance,
     }
-    public SampleType sampleType;
+    public SamplingType samplingType = SamplingType.HemiSphere;
 
     public ComputeShader cs;
     public Shader particleShader;
-    public int count = 100;
-    public GameObject arrow;
-
-    #region Light
-    public enum LightType
-    {
-        SkyLight,
-        SphereLight,
-        AeraLight
-    }
-    public LightType lightType = LightType.SphereLight;
-    public float sphereLightRadius;
-
-    public GameObject sphereLight;
-    public GameObject areaLight;
-    #endregion
+    public int count = 10000;
 
     ComputeBuffer cb;
-    Vector3[] directions;
-
     Material material;
 
-    // http://corysimon.github.io/articles/uniformdistn-on-sphere/
     // Start is called before the first frame update
     void Start()
     {
         cb = new ComputeBuffer(count, sizeof(float) * 3);
-        directions = new Vector3[count];
         cs.SetBuffer(0, "directions", cb);
         cs.SetFloat("seed", Random.value);
+
         material = new Material(particleShader);
         material.SetBuffer("cb", cb);
-
-        sphereLightRadius = sphereLight.GetComponent<SphereCollider>().radius * sphereLight.transform.localScale.x;
     }
 
-    private void Update()
+    // Update is called once per frame
+    void Update()
     {
         cs.GetKernelThreadGroupSizes(0, out uint x, out uint _, out _);
-
         int groupX = Mathf.CeilToInt((float)count / x);
 
-        cs.SetInt("sampleType", (int)sampleType);
-        cs.SetVector("normal", arrow.transform.up);
-        // light start
-        cs.SetVector("sphereLight", new Vector4(sphereLight.transform.position.x,
-            sphereLight.transform.position.y,
-            sphereLight.transform.position.z,
-            sphereLightRadius));
-        // light end
+        cs.SetInt("samplingType", (int)samplingType);
+        cs.SetVector("normal", transform.up);
 
         cs.Dispatch(0, groupX, 1, 1);
-        cb.GetData(directions);
     }
 
     void OnRenderObject()

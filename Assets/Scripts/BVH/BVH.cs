@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -13,9 +12,6 @@ public class BVH : MonoBehaviour
     public ComputeShader meshDataShader;
     public Mesh mesh;
 
-    ComputeShader rayTracingShader;
-    int kernelHandle;
-
     struct MeshVertex
     {
         public Vector3 position;
@@ -23,6 +19,7 @@ public class BVH : MonoBehaviour
         public Vector3 tangent;
         public Vector2 uv;
     }
+    MeshBufferContainer container;
 
     [StructLayout(LayoutKind.Sequential)]
     struct MaterialData
@@ -32,7 +29,10 @@ public class BVH : MonoBehaviour
         public float smoothness;
         public float transparent;
         public Vector3 emissionColor;
-        public uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
+        // 使用标记位来区分不同材质, 0：default opacity, 1: transparent, 2: emission, 3: clear coat
+        public uint materialType;
+        ////////////// chapter6_5 //////////////
+        public float ior;
 
         public MaterialData(Material mat)
         {
@@ -41,7 +41,17 @@ public class BVH : MonoBehaviour
             smoothness = Mathf.Max(0.01f, mat.GetFloat("_Glossiness"));
             transparent = -1;
             emissionColor = Vector3.zero;
-            materialType = 0;
+
+            ////////////// chapter6_5 //////////////
+            if (mat.HasProperty("_MaterialType"))
+                materialType = (uint)(mat.GetFloat("_MaterialType"));
+            else
+                materialType = 0;
+
+            if (mat.HasProperty("_IOR"))
+                ior = mat.GetFloat("_IOR");
+            else
+                ior = 1f;
 
             if ((int)(mat.GetFloat("_Mode")) == 3)
             {
@@ -55,16 +65,9 @@ public class BVH : MonoBehaviour
                 emissionColor = new Vector3(color.r, color.g, color.b);
                 materialType = 2;
             }
-
-            //if (mat.name.ToLower().Contains("_paint_"))
-            //{
-            //    materialType = 3;
-            //}
         }
     }
-
     ComputeBuffer materialDataBuffer;
-    MeshBufferContainer container;
 
     ////////////// chapter4_4 //////////////
     public enum DebugDataType
@@ -77,64 +80,61 @@ public class BVH : MonoBehaviour
         BVH
     }
     public DebugDataType debugDataType = DebugDataType.None;
-    public int debugDepth = 1;
 
+    ////////////// chapter4_5 //////////////
     public ComputeShader localRadixSortShader;
     public ComputeShader globalRadixSortShader;
     public ComputeShader scanShader;
-    public ComputeShader bvhShader;
-
     ComputeBufferSorter<uint, uint> sorter;
+
+    ////////////// chapter4_6 //////////////
+    public ComputeShader bvhShader;
+    public int debugDepth = 1;
     BVHConstructor bvhConstructor;
 
-    ////////////// chapter4_4 //////////////
-    uint[] debugBeforeSortTriangleIndice;
-    uint[] debugAfterSortTriangleIndice;
+    ////////////// chapter6_5 //////////////
+    ComputeShader rayTracingShader;
+    int kernelHandle;
 
     ////////////// chapter4_3 //////////////
-    public void Init(ComputeShader shader, int handle)
+    public void Init(ComputeShader shader, int handle, int kernelHandleAO = -1)
     {
+        ////////////// chapter4_7 //////////////
+        /// 测试BVH的开销
+        //System.DateTime beforeDT = System.DateTime.Now;
+
+        ////////////// chapter6_5 //////////////
         rayTracingShader = shader;
         kernelHandle = handle;
 
-        MeshRenderer[] mrs = (from mr in meshParent.GetComponentsInChildren<MeshRenderer>(false) where mr.enabled && mr.gameObject.activeInHierarchy select mr).ToArray();
+        // 1. 初始化 mesh 数据
+        InitMesh(out mesh, out List<uint> materialIndices, out List<Material> materials, out List<Vector2Int> shadowIndices);
 
-        // 构造BVH的基本流程：1. 构造ZOrder Curve & Morton Code 2. 排序 3 构造子节点 4 构造内部节点 5 更新AABB
-        // http://ma-yidong.com/2018/11/10/construct-bvh-with-unity-job-system/
-
-        //System.DateTime beforeDT = System.DateTime.Now;
-
-        // 构造 Mesh
-        InitMesh(mrs, out mesh, out List<uint> materialIndices, out List<Material> materials, out List<Vector2Int> shadowIndices);
-        // 收集材质球
+        // 2. 初始化 材质 数据
         InitMaterialData(materials);
 
+        // 3. 使用 mesh buffer container来存贮mesh相关数据
         container = new MeshBufferContainer(mesh, materialIndices, shadowIndices);
 
         ////////////// chapter4_4 //////////////
-        // 构造 AABB, Morton Code
-        MeshData.Calculate(container.trianglesLength,
+        MeshData.Calculate(meshDataShader, 
+            container.trianglesLength,
+            container.bounds,
             container.vertexBuffer,
             container.indexBuffer,
-            container.mortonCodeBuffer,
-            container.triangleIndexBuffer,
-            container.triangleAABBBuffer,
-            container.triangleDataBuffer,
-            container.materialIndexBuffer,
+            container.materialIndexBuffer,  
             container.shadowIndexBuffer,
-            container.bounds,
-            meshDataShader);
+    /*out */container.triangleAABBBuffer,
+    /*out */container.triangleDataBuffer,
+    /*out */container.triangleIndexBuffer,
+    /*out */container.mortonCodeBuffer);
 
-        //Debug.Log("Before BVH");
-        ////container.GetAllGpuData();
-        ////container.PrintData();
+        // Debug data
+        //Debug.Log("Before Radix Sort:\n");
+        //container.PrintData();
 
         ////////////// chapter4_5 //////////////
-        //// 基数排序Radix Sort，适合并行计算的排序算法 https://github.com/drzhn/UnityGpuCollisionDetection
-        debugBeforeSortTriangleIndice = new uint[container.triangleIndexBuffer.count];
-        container.triangleIndexBuffer.GetData(debugBeforeSortTriangleIndice);
-        Debug.Log("Before Radix Sort:\n" + ArrayToString(debugBeforeSortTriangleIndice));
-
+        // 使用GPU版本的基数排序
         sorter = new ComputeBufferSorter<uint, uint>(container.trianglesLength,
             container.mortonCodeBuffer,
             container.triangleIndexBuffer,
@@ -142,39 +142,30 @@ public class BVH : MonoBehaviour
             globalRadixSortShader,
             scanShader);
         sorter.Sort();
+        sorter.Dispose();
         container.DistributeMortonCode();
-
-        debugAfterSortTriangleIndice = new uint[container.triangleIndexBuffer.count];
-        container.triangleIndexBuffer.GetData(debugAfterSortTriangleIndice);
-        Debug.Log("After Radix Sort:\n" + ArrayToString(debugAfterSortTriangleIndice));
+        //Debug.Log("After Radix Sort:\n");
+        //container.PrintData();
 
         ////////////// chapter4_6 //////////////
-        //// 构造BVH
         bvhConstructor = new BVHConstructor(container.trianglesLength,
+            bvhShader,
             container.mortonCodeBuffer,
             container.triangleIndexBuffer,
             container.triangleAABBBuffer,
-            container.bvhInternalNodeBuffer,
-            container.bvhLeafNodeBuffer,
-            container.bvhDataBuffer,
-            bvhShader);
+            /*out*/container.bvhInternalNodeBuffer,
+            /*out*/container.bvhLeafNodeBuffer,
+            /*out*/container.bvhDataBuffer);
 
         bvhConstructor.ConstructTree();
         bvhConstructor.ConstructBVH();
+        bvhConstructor.Dispose();
 
-        //Debug.Log("After BVH");
-        ////container.PrintData();
-
-        ////System.DateTime afterDT = System.DateTime.Now;
-        ////System.TimeSpan ts = afterDT.Subtract(beforeDT);
-        ////Debug.Log("BVH spent: " + ts.TotalMilliseconds);
-
-        ////Debug.Log("TriangleAABB stride: " + container.TriangleAABB.stride);
-        ////Debug.Log("TriangleAABB count: " + container.TriangleAABB.count);
-        ////AABB[] aabbs = new AABB[container.TriangleAABB.count];
-        ////container.TriangleAABB.GetData(aabbs);
-        ////for (int i = 0; i < container.TriangleAABB.count; ++i)
-        ////    Debug.Log(aabbs[i].ToString());
+        ////////////// chapter4_7 //////////////
+        ///// 测试BVH的开销
+        //System.DateTime afterDT = System.DateTime.Now;
+        //System.TimeSpan ts = afterDT.Subtract(beforeDT);
+        //Debug.Log("BVH spent: " + ts.TotalMilliseconds);
 
         ////////////// chapter4_7 //////////////
         rayTracingShader.SetBuffer(kernelHandle, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
@@ -184,38 +175,56 @@ public class BVH : MonoBehaviour
         rayTracingShader.SetBuffer(kernelHandle, "bvhDataBuffer", container.bvhDataBuffer);
         rayTracingShader.SetBuffer(kernelHandle, "triangleDataBuffer", container.triangleDataBuffer);
         rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
+
+        ////////////// chapter7_1 //////////////
+        if (kernelHandleAO > 0)
+        {
+            rayTracingShader.SetBuffer(kernelHandleAO, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "triangleAABBBuffer", container.triangleAABBBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "bvhDataBuffer", container.bvhDataBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "triangleDataBuffer", container.triangleDataBuffer);
+            rayTracingShader.SetBuffer(kernelHandleAO, "materialDataBuffer", materialDataBuffer);
+        }
     }
 
-    // 1. 构造 AABB
-    void InitMesh(MeshRenderer[] mrs, out Mesh mesh, out List<uint> materialIndices, out List<Material> materials, out List<Vector2Int> shadowIndices)
+    void InitMesh(out Mesh mesh,
+        out List<uint> materialIndices,
+        out List<Material> materials,
+        out List<Vector2Int> shadowIndices)
     {
+        MeshRenderer[] mrs = (from mr in meshParent.GetComponentsInChildren<MeshRenderer>(false)
+                              where mr.enabled && mr.gameObject.activeInHierarchy
+                              select mr).ToArray();
+
+        // mesh 顶点相关数据存储在这些数组中
         List<int> indices = new List<int>();
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
         List<Vector3> tangents = new List<Vector3>();
         List<Vector2> uvs = new List<Vector2>();
 
-        // 处理材质
-        materialIndices = new List<uint>();    // 这里存贮的是每一个三角面的材质id
+        // 材质，这里存储的是每一个三角面的材质id
+        materialIndices = new List<uint>();
         materials = new List<Material>();
 
-        // 处理阴影
-        shadowIndices = new List<Vector2Int>();   // 这里存贮的是每一个三角面的cast/receive shadow
+        // 阴影，这里存储的是每一个三角面的cast/receive shadow
+        shadowIndices = new List<Vector2Int>();
 
+        // 开始合并模型
         int indexOffset = 0;
         uint materialIndex = 0;
         Bounds encompassingAABB = mrs[0].bounds;
 
-        // 1.0 create triangle structure
         foreach (MeshRenderer mr in mrs)
         {
+            // 1. 处理模型，得到每一个模型的顶点数据
             Mesh m = mr.GetComponent<MeshFilter>().sharedMesh;
             var _indices = m.triangles.Select(i => i + indexOffset);
-            // world space tri verts
+            // 将顶点，法线，切线从局部坐标变换到世界坐标系
             var _vertices = m.vertices.Select(v => mr.transform.TransformPoint(v));
-            // world space tri nromals
             var _normals = m.normals.Select(n => mr.transform.TransformVector(n));
-            // world space tri tangents
             var _tangents = m.tangents.Select(t => mr.transform.TransformVector(t));
             var _uvs = m.uv;
 
@@ -225,40 +234,41 @@ public class BVH : MonoBehaviour
             tangents.AddRange(_tangents);
             uvs.AddRange(_uvs);
 
-            // 处理材质
-            // 得到所有的三角面，而不是所有顶点
+            // 2. 处理材质，这里是处理当前模型的三角面，而不是顶点
             int[] polygons = m.triangles.Where((value, index) => index % 3 == 0).ToArray();
             Material mat = mr.sharedMaterial;
+            // 如果当前模型的材质已经在 materials 里，就用已有的材质 id 赋值
             if (materials.Contains(mat))
             {
                 uint index = (uint)materials.IndexOf(mat);
                 materialIndices.AddRange(polygons.Select(i => index));
             }
-            else
+            else // 如果当前模型的材质不在 materials 里，则将这个material添加进来
             {
                 materialIndices.AddRange(polygons.Select(i => materialIndex));
-
                 materials.Add(mat);
                 materialIndex += 1;
             }
 
-            // 处理阴影
-            shadowIndices.AddRange(polygons.Select(i => new Vector2Int(mr.shadowCastingMode == ShadowCastingMode.On ? 1 : 0, 
-                                                                       mr.receiveShadows ? 1 : 0)));
+            // 3. 处理阴影，使用2个int来存储阴影数据：第一个int: cast shadow, 第二个int: receive shadow
+            shadowIndices.AddRange(polygons.Select(i => new Vector2Int(mr.shadowCastingMode == ShadowCastingMode.On ? 1 : 0, mr.receiveShadows ? 1 : 0)));
 
-            // index offsets
+            // 迭代好一个mesh之后，index需要做偏移
             indexOffset += m.vertices.Length;
 
+            // 同时也更新一下aabb
             encompassingAABB.min = Vector3.Min(encompassingAABB.min, m.bounds.min);
             encompassingAABB.max = Vector3.Max(encompassingAABB.max, m.bounds.max);
         }
 
+        // 开始合并mesh
         int vertexCount = vertices.Count;
         int indexCount = indices.Count;
 
-        // 创建一个新的mesh
+        // 1. 创建一个新的mesh
         mesh = new Mesh();
 
+        // 2. 声明mesh的顶点数据结构
         // Byte Address Buffer, 读写的时候，把buffer里的内容（byte）做偏移，可用于寻址
         // 对应的是HLSL的ByteAddressBuffer，RWByteAddressBuffer
         mesh.indexBufferTarget |= GraphicsBuffer.Target.Raw;
@@ -273,17 +283,16 @@ public class BVH : MonoBehaviour
         // Vertex uv: float32 x 2
         VertexAttributeDescriptor uvDesc = new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2);
 
+        // 定义顶点数据结构
         mesh.SetVertexBufferParams(vertexCount, pDesc, nDesc, tDesc, uvDesc);
-        // IndexFormat.UInt16: 2 byte, 范围 0～65535 
-        // IndexFormat.UInt32: 4 byte, 范围 0～4294967295 
+        // 定义索引数据
+        // IndexFormat.UInt16: 2 byte, 范围 0-65535
+        // IndexFormat.UInt32: 4 byte, 范围 0-4294967295 
         mesh.SetIndexBufferParams(indexCount, IndexFormat.UInt32);
         // 保证传参是 MeshUpdateFlags.DontRecalculateBounds
         mesh.SetSubMesh(0, new SubMeshDescriptor(0, indexCount), MeshUpdateFlags.DontRecalculateBounds);
 
-        // 开始传递顶点索引
-        mesh.SetIndexBufferData(indices, 0, 0, indexCount);
-
-        // 开始传递顶点缓存
+        // 传值顶点数据结构
         MeshVertex[] vertexArray = new MeshVertex[vertexCount];
         for (var i = 0; i < vertexCount; ++i)
         {
@@ -293,8 +302,10 @@ public class BVH : MonoBehaviour
             vertexArray[i].uv = uvs[i];
         }
         mesh.SetVertexBufferData(vertexArray, 0, 0, vertexCount);
-
         mesh.bounds = encompassingAABB;
+
+        // 传值索引数据
+        mesh.SetIndexBufferData(indices, 0, 0, indexCount);
     }
 
     void InitMaterialData(List<Material> materials)
@@ -304,40 +315,36 @@ public class BVH : MonoBehaviour
         materialDataBuffer.SetData(datas);
     }
 
-    private void OnDestroy()
-    {
-        ////////////// chapter4_3 //////////////
-        materialDataBuffer?.Dispose();
-        container?.Dispose();
-
-        ////////////// chapter4_4 //////////////
-        sorter?.Dispose();
-        bvhConstructor?.Dispose();
-    }
-
-    ////////////// chapter4_5 //////////////
-    StringBuilder ArrayToString<T>(T[] array, uint maxElements = 4096)
-    {
-        StringBuilder builder = new StringBuilder("");
-        for (var i = 0; i < array.Length; i++)
-        {
-            if (i >= maxElements) break;
-            builder.Append(array[i] + " ");
-        }
-
-        return builder;
-    }
-
     ////////////// chapter4_4 //////////////
-    #region Debug
-    private void DrawAABB(AABB aabb, float scale = 1.0f)
+    void DrawAABB(AABB aabb, float scale = 1.0f)
     {
         Gizmos.DrawWireCube((aabb.min + aabb.max) / 2, (aabb.max - aabb.min) * scale);
     }
 
+    ////////////// chapter6_5 //////////////
+    public void UpdateMaterialData()
+    {
+        List<Material> materials = new List<Material>();
+        foreach (MeshRenderer mr in meshParent.GetComponentsInChildren<MeshRenderer>(false))
+        {
+            if (mr.enabled && mr.gameObject.activeInHierarchy)
+            {
+                Material mat = mr.sharedMaterial;
+                // 如果当前模型的材质已经在materials里，就用已有的材质
+                if (!materials.Contains(mat))
+                    materials.Add(mat);
+            }
+        }
+        MaterialData[] datas = (from m in materials select new MaterialData(m)).ToArray();
+        materialDataBuffer.SetData(datas);
+        rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
+
+        RayTracing.SetDirty();
+    }
+
     private void OnDrawGizmos()
     {
-        switch (debugDataType)
+        switch(debugDataType)
         {
             case DebugDataType.AABB:
             case DebugDataType.MortonCode:
@@ -350,11 +357,10 @@ public class BVH : MonoBehaviour
                         uint[] mortonCodes = new uint[container.trianglesLength];
                         container.mortonCodeBuffer.GetData(mortonCodes);
 
-                        //Dictionary<int, uint> di = mortonCodes.ToDictionary(key => System.Array.IndexOf(mortonCodes, key), key => key);
+                        // 给当前morton code升序排序
                         Dictionary<int, uint> di = new Dictionary<int, uint>();
                         for (int i = 0; i < mortonCodes.Length; ++i)
                             di.Add(i, mortonCodes[i]);
-                        //di = di.OrderBy(o => o.Value).ToDictionary(o => o.Key, p => p.Value);
 
                         Vector3 fromPos = Vector3.zero;
                         foreach (KeyValuePair<int, uint> kvp in di)
@@ -366,7 +372,7 @@ public class BVH : MonoBehaviour
                             if (fromPos != Vector3.zero)
                                 UnityEditor.Handles.DrawLine(fromPos, toPos);
                             fromPos = toPos;
-                            
+
                             Gizmos.color = Color.white;
                             UnityEditor.Handles.Label(toPos, kvp.Value.ToString());
                         }
@@ -378,7 +384,6 @@ public class BVH : MonoBehaviour
                         for (int i = 0; i < container.trianglesLength; i++)
                             DrawAABB(aabbs[i]);
                     }
-
                 }
                 break;
             case DebugDataType.BeforeSort:
@@ -486,7 +491,7 @@ public class BVH : MonoBehaviour
 
                     InternalNode[] internalNodes = new InternalNode[container.bvhInternalNodeBuffer.count];
                     container.bvhInternalNodeBuffer.GetData(internalNodes);
-                    
+
                     AABB[] aabbs = new AABB[container.bvhDataBuffer.count];
                     container.bvhDataBuffer.GetData(aabbs);
                     while (currentStackIndex != 0)
@@ -530,34 +535,17 @@ public class BVH : MonoBehaviour
                             depthRight += 1;
                         }
                     }
-                    //{
-                    //    List<int[]> values = new List<int[]>();
-                    //    for (int i = 0; i < container.Triangles.Length; i += 3)
-                    //        values.Add(new int[3] { container.Triangles[i], container.Triangles[i + 1], container.Triangles[i + 2] });
-
-                    //    Vector3 start = Vector3.zero;
-
-                    //    uint[] sortedValues = container.ValuesData;
-
-                    //    for (int i = 0; i < sortedValues.Length; ++i)
-                    //    {
-                    //        int i0 = values[(int)sortedValues[i]][0];
-                    //        int i1 = values[(int)sortedValues[i]][1];
-                    //        int i2 = values[(int)sortedValues[i]][2];
-
-                    //        Vector3 v0 = container.Vertices[i0];
-                    //        Vector3 v1 = container.Vertices[i1];
-                    //        Vector3 v2 = container.Vertices[i2];
-                    //        Vector3 center = (v0 + v1 + v2) / 3;
-
-                    //        Gizmos.color = Color.white;
-                    //        Gizmos.DrawLine(center, start);
-                    //        start = center;
-                    //    }
-                    //}
                 }
+                break;
+            default:
                 break;
         }
     }
-    #endregion
+
+    private void OnDestroy()
+    {
+        ////////////// chapter4_3 //////////////
+        materialDataBuffer?.Dispose();
+        container?.Dispose();
+    }
 }

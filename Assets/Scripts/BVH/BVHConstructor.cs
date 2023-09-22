@@ -6,14 +6,16 @@ using UnityEngine;
 
 public class BVHConstructor : IDisposable
 {
+    // 经过排序的数据
     private readonly ComputeBuffer _sortedMortonCodes;
     private readonly ComputeBuffer _sortedTriangleIndices;
     private readonly ComputeBuffer _triangleAABB;
 
-    private readonly ComputeBuffer _internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
-    private readonly ComputeBuffer _leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-    private readonly ComputeBuffer _bvhData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-    private readonly DataBuffer<uint> _atomics; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+    // BVH构造所使用的数据
+    private readonly ComputeBuffer _internalNodes;
+    private readonly ComputeBuffer _leafNodes;
+    private readonly ComputeBuffer _bvhData;
+    private readonly DataBuffer<uint> _atomics;
 
     private readonly ComputeShader _bvhShader;
     private readonly int _treeConstructionKernel;
@@ -21,16 +23,18 @@ public class BVHConstructor : IDisposable
 
     private readonly uint _trianglesCount;
 
-    public BVHConstructor(
-        uint trianglesCount,
+    public BVHConstructor(uint trianglesCount,
+        ComputeShader bvhShader,
         ComputeBuffer sortedMortonCodes,
         ComputeBuffer sortedTriangleIndices,
         ComputeBuffer triangleAABB,
-        ComputeBuffer internalNodes,
-        ComputeBuffer leafNodes,
-        ComputeBuffer bvhData,
-        ComputeShader bvhShader)
+        /*out*/ComputeBuffer internalNodes,
+        /*out*/ComputeBuffer leafNodes,
+        /*out*/ComputeBuffer bvhData)
     {
+        _trianglesCount = trianglesCount;
+        _bvhShader = bvhShader;
+
         _sortedMortonCodes = sortedMortonCodes;
         _sortedTriangleIndices = sortedTriangleIndices;
         _triangleAABB = triangleAABB;
@@ -38,13 +42,13 @@ public class BVHConstructor : IDisposable
         _internalNodes = internalNodes;
         _leafNodes = leafNodes;
         _bvhData = bvhData;
-        _atomics = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, 0);
-        _trianglesCount = trianglesCount;
 
-        _bvhShader = bvhShader;
+        _atomics = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, 0);
+
         _treeConstructionKernel = _bvhShader.FindKernel("TreeConstructor");
         _bvhConstructionKernel = _bvhShader.FindKernel("BVHConstructor");
 
+        // 传递参数到compute shader
         _bvhShader.SetInt("trianglesCount", (int)trianglesCount);
         _bvhShader.SetBuffer(_treeConstructionKernel, "sortedMortonCodes", _sortedMortonCodes);
         _bvhShader.SetBuffer(_treeConstructionKernel, "internalNodes", _internalNodes);

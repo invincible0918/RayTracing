@@ -1,33 +1,36 @@
 #pragma kernel CSMain
+//////////////// chapter7_1 //////////////
+#pragma kernel AmbientOcclusion
 
-// 宏定义必须在 cginc之前
-////////////// chapter4_3 //////////////
+//////////////// chapter4_7 //////////////
 #pragma multi_compile __ BVH
+
 ////////////// chapter5_4 //////////////
 #pragma multi_compile __ NO_SHADOW
 #pragma multi_compile __ HARD_SHADOW
 #pragma multi_compile __ SOFT_SHADOW
 
-//////////////// chapter6_1 //////////////
+//////////////// chapter6_2 //////////////
 #pragma multi_compile __ UNIFORM_SAMPLING
 #pragma multi_compile __ COSINE_SAMPLING
 #pragma multi_compile __ LIGHT_IMPORTANCE_SAMPLING
 #pragma multi_compile __ BSDF_IMPORTANCE_SAMPLING
 #pragma multi_compile __ MULTIPLE_IMPORTANCE_SAMPLING
-//////////////// chapter6_2 //////////////
+
 #pragma multi_compile __ SPHERE_LIGHT
 #pragma multi_compile __ AREA_LIGHT
 #pragma multi_compile __ DISC_LIGHT
 
-
+////////////// chapter2_1 //////////////
 #include "Header.cginc"
 #include "BruteForceRayTracing.cginc"
 #include "Shade.cginc"
-//////////////// chapter4_3 //////////////
-#include "./Assets/Shaders/BVH/BVHTracing.cginc"
-//////////////// chapter5_4 //////////////
+//////////////// chapter4_7 //////////////
+#include "./Assets/Shaders/BVH/BVHRayTracing.cginc"
+////////////// chapter5_4 //////////////
 #include "Shadow.cginc"
-
+////////////// chapter7_1 //////////////
+#include "AmbientOcclusion.cginc"
 
 ////////////// chapter2_1 //////////////
 RWTexture2D<float4> destination;
@@ -37,58 +40,79 @@ int height;
 //////////////// chapter3_5 //////////////
 float4 pixelOffset;
 
-////////////// chapter2_1 //////////////
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
     ////////////// chapter5_2 //////////////
     _pixel = id.xy;
 
-    ////////////// chapter2_1 //////////////
-    //Ray ray = CreateCameraRay(0);
+    ////////////// chapter6_4 //////////////
+    SetSeed();
 
     ////////////// chapter2_2 //////////////
-    // transform pixel from (0, 1) to (-1, 1)
+    // uv 空间定义在 (-1,1)
     //float2 uv = float2(id.xy / float2(width, height)) * 2 - 1;
-
     //////////////// chapter3_5 //////////////
-    float2 uv = float2((id.xy + pixelOffset.xy * 2 - 1) / float2(width, height)) * 2 - 1;
+    //float2 uv = float2((id.xy + pixelOffset.xy - 0.5) / float2(width, height)) * 2 - 1;
+    float2 uv = float2((id.xy + float2(Rand(), Rand()) - 0.5) / float2(width, height)) * 2 - 1;
+
+    Ray ray = CreateCameraRay(uv);
+
+    ////////////// chapter2_2 //////////////
+    // 主要的光线追踪反弹循环
+    float3 col = float3(0, 0, 0);
+    for (int i = 0; i < MAX_BOUNCE; i++)
+    {
+        //////////////// chapter4_7 //////////////
+#ifdef BVH
+        RayHit hit = BVHRayTrace(ray);
+#else
+        RayHit hit = BruteForceRayTrace(ray);
+#endif
+        //////////////// chapter5_4 //////////////
+        ////float3 shadow = HardShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
+        //float3 shadow = SoftShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
+        //ray.energy *= shadow;
+
+        col += ray.energy * Shade(hit, /*inout*/ ray);
+
+        // 当光能损失完后，该条光线追踪结束
+        if (!any(ray.energy))   // any(x): x!=0 return true
+            break;
+    }
+
+    //////////////// chapter6_6 //////////////
+    // 最终输出从linear color space 到 sRGB color space
+    col = LinearToSRGB(col);
+
+    destination[id.xy] = float4(col, 0.0);
+}
+
+//////////////// chapter7_1 //////////////
+RWTexture2D<float4> ao;
+
+[numthreads(8,8,1)]
+void AmbientOcclusion (uint3 id : SV_DispatchThreadID)
+{
+    _pixel = id.xy;
+
+    SetSeed();
+
+    float2 uv = float2((id.xy + float2(Rand(), Rand()) - 0.5) / float2(width, height)) * 2 - 1;
 
     Ray ray = CreateCameraRay(uv);
 
     float3 col = float3(0, 0, 0);
-
     for (int i = 0; i < MAX_BOUNCE; i++)
     {
-        ////////////// chapter2_1 //////////////
-        //RayHit hit = BruteForceRayTrace(ray);
-        ////////////// chapter4_3 //////////////
-#ifdef BVH
-        RayHit hit = BVHTrace(ray);
-#else
-        RayHit hit = BruteForceRayTrace(ray);
-#endif
-        //col += Shade(hit, ray);
-        // chapter3_1
-        col += ray.energy * Shade(hit, ray);
+        RayHit hit = BVHRayTrace(ray);
+
+	    col += ray.energy * AmbientOcclusionShade(hit, /*inout*/ ray);
 
         if (!any(ray.energy))   // any(x): x!=0 return true
             break;
     }
 
-    //////////////// chapter5_4 //////////////
-#if defined(HARD_SHADOW)
-// 使用带有强烈明暗对比的hdr之后，对于漫反射可以不用计算阴影，但是对于镜面反射还是要计算，这里需要展开
-    Ray shadowRay = CreateCameraRay(uv);
-    RayHit hit = BVHTrace(shadowRay);
-    float3 shadow = HardShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
-    col *= shadow;
-#elif defined(SOFT_SHADOW)
-    Ray shadowRay = CreateCameraRay(uv);
-    RayHit hit = BVHTrace(shadowRay);
-    float3 shadow = SoftShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
-    col *= shadow;
-#endif
-
-    destination[id.xy] = float4(col, 1);
+    ao[id.xy] = float4(col, 0.0);
 }
+

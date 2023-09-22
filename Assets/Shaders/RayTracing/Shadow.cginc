@@ -1,12 +1,9 @@
-﻿static const int NUM_SHADOW_RAYS = 16;  // blue noise will use 64 samples max. white noise will use however many you specify here.
-static const float LIGHT_RADIUS = 0.1f; // radius of light disk at 1 unit away
-static const float GOLDEN_RATIO_CONJUGATE = 0.61803398875f; // also just fract(goldenRatio)
+#ifndef _SHADOW_
+#define _SHADOW_
 
-// This "blue noise in disk" array is blue noise in a circle and is used for sampling the
-// sun disk for the blue noise.
-// these were generated using a modified mitchell's best candidate algorithm.
-// 1) It was not calculated on a torus (no wrap around distance for points)
-// 2) Candidates were forced to be in the unit circle (through rejection sampling)
+static const int NUM_SHADOW_RAYS = 16; 
+static const float LIGHT_RADIUS = 0.1f; 
+
 static const float2 BLUE_NOISE_IN_DISK[64] = {
     float2(0.478712,0.875764),
     float2(-0.337956,-0.793959),
@@ -76,61 +73,43 @@ static const float2 BLUE_NOISE_IN_DISK[64] = {
 
 float3 HardShadow(float3 origin, float3 lightDir)
 {
-	// 正式添加软阴影的实现
-    Ray shadowRay = CreateRay(origin, lightDir);
-    RayHit shadowHit = BVHTrace(shadowRay);
-    if (shadowHit.castShadow > 0 && shadowHit.distance != 1.#INF)
-    {
-        // 可以用enery来控制阴影的黑色
-        return lerp(1, shadowParameter.rgb, shadowParameter.a);
-    }
-    else
-        return 1;
+	Ray shadowRay = CreateRay(origin, lightDir);
+	RayHit shadowHit = BVHRayTrace(shadowRay);
+	if(shadowHit.distance != 1.#INF && shadowHit.castShadow > 0)
+		return lerp(1, shadowParameter.rgb, shadowParameter.a);
+	else
+		return 1;
 }
 
 float3 SoftShadow(float3 origin, float3 lightDir)
 {
-    // use the screen space blue noise texture and golden ratio * frame number to
-    // get a "random number" to convert to an angle for how much to rotate
-    // the blue noise sample positions for this pixel
-    float blueNoise = Rand();//texture(iChannel1, pixelPos / 1024.0f).r;
-    //blueNoise = frac(blueNoise + GOLDEN_RATIO_CONJUGATE * float(frame));
+    float blueNoise = Rand();
     float theta = blueNoise * 2.0 * PI;
     float cosTheta = cos(theta);
     float sinTheta = sin(theta);
 
-    // shoot some shadow rays
-    float shadowTerm = 0.0f;
+	float shadowTerm = 0.0f;
     float3 lightTangent = normalize(cross(lightDir, float3(0.0f, 1.0f, 0.0f)));
     float3 lightBitangent = normalize(cross(lightTangent, lightDir));
-    for (int shadowRayIndex = 0; shadowRayIndex < NUM_SHADOW_RAYS; ++shadowRayIndex)
-    {
-        // calculate a ray direction to a random point on a disk in the direction of the light.
-        // AKA PIck a random point on the sun and shoot a ray at it.
-        float3 shadowRayDir;
-        {
-            float2 diskPoint;
-                
-            // get a blue noise sample position
-            float2 samplePos = BLUE_NOISE_IN_DISK[shadowRayIndex];
 
-            // rotate it
-            diskPoint.x = samplePos.x * cosTheta - samplePos.y * sinTheta;
-            diskPoint.y = samplePos.x * sinTheta + samplePos.y * cosTheta;
+	for(int shadowRayIndex = 0; shadowRayIndex < NUM_SHADOW_RAYS; ++shadowRayIndex)
+	{
+		float3 shadowRayDir;
 
-            // scale it by the disk size
-            diskPoint *= LIGHT_RADIUS;
+        float2 samplePos = BLUE_NOISE_IN_DISK[shadowRayIndex];
+        float2 diskPoint;
+        diskPoint.x = samplePos.x * cosTheta - samplePos.y * sinTheta;
+        diskPoint.y = samplePos.x * sinTheta + samplePos.y * cosTheta;
+        diskPoint *= LIGHT_RADIUS;
 
-            // calculate the normalized vector to the random point on the disk
-            shadowRayDir = normalize(lightDir + diskPoint.x * lightTangent + diskPoint.y * lightBitangent);
-        }
+        shadowRayDir = normalize(lightDir + diskPoint.x * lightTangent + diskPoint.y * lightBitangent);
 
-        // trace shadow ray
-        Ray shadowRay = CreateRay(origin, shadowRayDir);
-        RayHit shadowHit = BVHTrace(shadowRay);
-        if (shadowHit.castShadow > 0)
-            shadowTerm = lerp(shadowTerm, ((shadowHit.distance == 1.#INF) ? 0.0f : 1.0f), 1.0f / float(shadowRayIndex + 1));
-    }
-
-    return lerp(1, shadowParameter.rgb, shadowParameter.a * shadowTerm);
+		Ray shadowRay = CreateRay(origin, shadowRayDir);
+		RayHit shadowHit = BVHRayTrace(shadowRay);
+		if(shadowHit.castShadow > 0)
+			shadowTerm = lerp(shadowTerm, ((shadowHit.distance == 1.#INF) ? 0.0f : 1.0f), 1.0f / float(shadowRayIndex + 1));
+	}
+	return lerp(1, shadowParameter.rgb, shadowParameter.a * shadowTerm);
 }
+
+#endif

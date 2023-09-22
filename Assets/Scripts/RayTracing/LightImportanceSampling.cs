@@ -8,6 +8,7 @@ public class LightImportanceSampling : MonoBehaviour
     public Transform sphereLightParent;
     public Transform areaLightParent;
     public Transform discLightParent;
+
     ComputeBuffer sphereLightBuffer;
     ComputeBuffer areaLightBuffer;
     ComputeBuffer discLightBuffer;

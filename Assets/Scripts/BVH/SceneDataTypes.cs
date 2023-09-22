@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -8,11 +10,6 @@ public struct AABB
     public float _dummy0;
     public Vector3 max;
     public float _dummy1;
-
-    //public override string ToString()
-    //{
-    //    return $"min:{min}, max:{max}, dummy0: {_dummy0}, dummy1: {_dummy1};\n";
-    //}
 
     public static AABB NullAABB = new AABB()
     {
@@ -26,13 +23,13 @@ public struct AABB
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 public struct Triangle
 {
-    // TODO texture index, etc
     public Vector3 point0;
     float _dummy0;
     public Vector3 point1;
     float _dummy1;
     public Vector3 point2;
     float _dummy2;
+
     public Vector2 uv0;
     public Vector2 uv1;
     public Vector2 uv2;
@@ -47,21 +44,13 @@ public struct Triangle
 
     Vector3 tangent0;
     float _dummy7;
-
     Vector3 tangent1;
     float _dummy8;
-
     Vector3 tangent2;
     float _dummy9;
 
     int materialIndex;
     Vector3 _dummy10;
-
-    //public override string ToString()
-    //{
-    //    //return $"point0:{point0}, point1:{point1}, point2:{point2}, normal0:{normal0}, normal1:{normal1}, normal2:{normal2}, materialIndex:{materialIndex}\n";
-    //    return $"{materialIndex},";
-    //}
 
     public static Triangle NullTriangle = new Triangle()
     {
@@ -71,6 +60,7 @@ public struct Triangle
         _dummy1 = 0,
         point2 = Vector3.zero,
         _dummy2 = 0,
+
         uv0 = Vector2.zero,
         uv1 = Vector2.zero,
         uv2 = Vector2.zero,
@@ -85,15 +75,26 @@ public struct Triangle
 
         tangent0 = Vector3.zero,
         _dummy7 = 0,
-
         tangent1 = Vector3.zero,
         _dummy8 = 0,
-
         tangent2 = Vector3.zero,
         _dummy9 = 0,
 
         materialIndex = 0,
         _dummy10 = Vector3.zero,
+    };
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 16)]
+public struct LeafNode
+{
+    public uint parent;
+    public uint index;
+
+    public static LeafNode NullLeaf = new LeafNode()
+    {
+        parent = 0xFFFFFFFF,
+        index = 0xFFFFFFFF
     };
 }
 
@@ -107,16 +108,6 @@ public struct InternalNode
     public uint parent;
     public uint index;
 
-    //public override string ToString()
-    //{
-    //    string GetNodeType(uint type)
-    //    {
-    //        return type == 0 ? "I" : "L";
-    //    }
-
-    //    return $"index:{index}, left:{leftNode} {GetNodeType(leftNodeType)}, right:{rightNode} {GetNodeType(rightNodeType)}, parent:{parent}\n";
-    //}
-    
     public static InternalNode NullLeaf = new InternalNode()
     {
         leftNode = 0xFFFFFFFF,
@@ -126,22 +117,4 @@ public struct InternalNode
         parent = 0xFFFFFFFF,
         index = 0xFFFFFFFF
     };
-};
-
-[StructLayout(LayoutKind.Sequential, Pack = 16)]
-public struct LeafNode
-{
-    public uint parent;
-    public uint index;
-
-    //public override string ToString()
-    //{
-    //    return $"index:{index}, parent:{parent}\n";
-    //}
-
-    public static LeafNode NullLeaf = new LeafNode()
-    {
-        parent = 0xFFFFFFFF,
-        index = 0xFFFFFFFF
-    };
-};
+}

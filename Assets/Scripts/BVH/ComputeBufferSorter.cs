@@ -7,7 +7,7 @@ using System.Text;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct, IComparable where TValue: struct
+public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey : struct, IComparable where TValue : struct
 {
     private readonly ComputeShader _localRadixSortShader;
     private readonly ComputeShader _globalRadixSortShader;
@@ -27,7 +27,7 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
     private readonly DataBuffer<uint> _offsetsData;
     private readonly DataBuffer<uint> _sizesData;
     private readonly DataBuffer<uint> _sizesPrefixSumData;
-    
+
     private readonly TKey[] _unsortedKeysLocalData = new TKey[Constants.DATA_ARRAY_COUNT];
     private readonly TKey[] _sortedKeysLocalData = new TKey[Constants.DATA_ARRAY_COUNT];
     private readonly uint[] _sizesLocalDataBeforeScan = new uint[Constants.BUCKET_SIZE * Constants.BLOCK_SIZE];
@@ -41,8 +41,8 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
     private readonly Dictionary<uint, int> _debugDataDictionary = new(256);
     private readonly uint _dataLength;
 
-    public ComputeBufferSorter(uint dataLength, 
-        ComputeBuffer keys, 
+    public ComputeBufferSorter(uint dataLength,
+        ComputeBuffer keys,
         ComputeBuffer values,
         ComputeShader localRadixSortShader,
         ComputeShader globalRadixSortShader,
@@ -159,8 +159,8 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
         int countNonUniqueElements = 0;
         for (uint i = 1; i < _dataLength; i++)
         {
-            
-            if (_sortedKeysLocalData[i].CompareTo(_sortedKeysLocalData[i - 1])  < 0)
+
+            if (_sortedKeysLocalData[i].CompareTo(_sortedKeysLocalData[i - 1]) < 0)
             {
                 Debug.LogError("Output data has unsorted element on index " + i);
                 return;
@@ -186,7 +186,7 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
         if (value is uint)
         {
             return (Convert.ToUInt32(value) >> bitOffset) & (Constants.BUCKET_SIZE - 1);
-        }        
+        }
         if (value is ulong)
         {
             return (uint)((Convert.ToUInt64(value) >> bitOffset) & (Constants.BUCKET_SIZE - 1));
