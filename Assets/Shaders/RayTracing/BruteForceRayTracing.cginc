@@ -91,6 +91,7 @@ void IntersectPlane(Ray ray, Plane plane, inout RayHit hit)
             hit.materialType = 0;
             ////////////// chapter6_5 //////////////
             hit.ior = 1.0;
+            hit.clearCoatColor = 0;
             hit.castShadow = 0;
             hit.receiveShadow = 0;
 		}

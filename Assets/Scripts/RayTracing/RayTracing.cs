@@ -21,7 +21,9 @@ public class RayTracing : MonoBehaviour
 
     ////////////// chapter3_4 //////////////
     public Light mainLight;
+    public float skyboxIntensityMulitiply = 2f; // 2 is compensation for HDR cube map's tint color is 0.5
     public Color shadowColor;
+    public float lightRadius = 0.1f;
     public float shadowIntensity = 1f;
 
     ////////////// chapter3_5 //////////////
@@ -50,15 +52,23 @@ public class RayTracing : MonoBehaviour
     ////////////// chapter6_5 //////////////
     static RayTracing instance;
 
-    ////////////// chapter7_1 //////////////
+    ////////////// chapter7_2 //////////////
     public GameObject matteMaskGO;
-    public RenderTexture ao;
+    public RenderTexture shadowMap;
     bool isRenderMatteMask;
-    int kernelHandleAO;
+    int kernelHandleShadowMap;
+
+    ////////////// chapter7_3 //////////////
+    public PostProcessStack postProcessStack;
+    public bool enablePostProcess;
+    public RenderTexture postProcessRT;
+    public bool pause;
 
     // Start is called before the first frame update
     void Start()
     {
+        ////////////// chapter6_5 //////////////
+        instance = this;
         ////////////// chapter2_1 //////////////
         InitCamera();
         InitRT();
@@ -68,14 +78,12 @@ public class RayTracing : MonoBehaviour
         InitLight();
         ////////////// chapter6_2 //////////////
         InitSampling();
-        ////////////// chapter6_5 //////////////
-        instance = this;
 
         // 初始化结束
         ////////////// chapter4_3 //////////////
         if (useBVH)
         {
-            bvh.Init(cs, kernelHandle, kernelHandleAO);
+            bvh.Init(cs, kernelHandle, kernelHandleShadowMap);
             cs.EnableKeyword("BVH");
         }
         else
@@ -120,11 +128,11 @@ public class RayTracing : MonoBehaviour
         cs.GetKernelThreadGroupSizes(kernelHandle, out uint x, out uint y, out _);
         int groupX = Mathf.CeilToInt((float)Screen.width / x);
         int groupY = Mathf.CeilToInt((float)Screen.height / y);
-        cs.Dispatch(kernelHandle, groupX, groupY, 1);
-
+        if (!pause)
+            cs.Dispatch(kernelHandle, groupX, groupY, 1);
         ////////////// chapter7_1 //////////////
-        if (isRenderMatteMask)
-            cs.Dispatch(kernelHandleAO, groupX, groupY, 1);
+        if (isRenderMatteMask && !pause)
+            cs.Dispatch(kernelHandleShadowMap, groupX, groupY, 1);
 
         // 使用光线追踪方法绘制 destination RT
         if (!aliasing)
@@ -132,9 +140,24 @@ public class RayTracing : MonoBehaviour
         else
         {
             addMaterial.SetFloat("_SamplePrePixel", samplePrePixel);
-            addMaterial.SetTexture("_AO", ao);
-            Graphics.Blit(rt, convergedRT, addMaterial);
-            Graphics.Blit(convergedRT, destination);
+
+            if (!isRenderMatteMask)
+                Graphics.Blit(rt, convergedRT, addMaterial, 0);
+            else
+            {
+                addMaterial.SetTexture("_ShadowMap", shadowMap);
+                Graphics.Blit(rt, convergedRT, addMaterial, 1);
+            }
+
+            ////////////// chapter7_3 //////////////
+            //Graphics.Blit(convergedRT, destination);
+            if (enablePostProcess)
+            {
+                postProcessStack.Render(convergedRT, postProcessRT);
+                Graphics.Blit(postProcessRT, destination);
+            }
+            else
+                Graphics.Blit(convergedRT, destination);
 
             samplePrePixel++;
         }
@@ -151,12 +174,14 @@ public class RayTracing : MonoBehaviour
         CreateRT(ref rt);
         ////////////// chapter3_5 //////////////
         CreateRT(ref convergedRT);
-        ////////////// chapter7_1 //////////////
+        ////////////// chapter7_2 //////////////
         if (matteMaskGO != null)
         {
             isRenderMatteMask = true;
-            CreateRT(ref ao);
+            CreateRT(ref shadowMap);
         }
+        ////////////// chapter7_3 //////////////
+        CreateRT(ref postProcessRT);
 
         samplePrePixel = 0;
     }
@@ -183,8 +208,12 @@ public class RayTracing : MonoBehaviour
         if (addMaterial == null)
             addMaterial = new Material(Shader.Find("MyCustom/AddShader"));
 
-        ////////////// chapter7_1 //////////////
-        kernelHandleAO = cs.FindKernel("AmbientOcclusion");
+        ////////////// chapter7_2 //////////////
+        kernelHandleShadowMap = cs.FindKernel("ShadowMap");
+
+        ////////////// chapter7_3 //////////////
+        if (enablePostProcess)
+            postProcessStack.Init(cs, kernelHandle);
     }
 
     void UpdateParameters()
@@ -202,7 +231,11 @@ public class RayTracing : MonoBehaviour
 
         //////////////// chapter7_1 //////////////
         if (isRenderMatteMask)
-            cs.SetTexture(kernelHandleAO, "ao", ao);
+            cs.SetTexture(kernelHandleShadowMap, "shadowMap", shadowMap);
+
+        ////////////// chapter7_3 //////////////
+        if (enablePostProcess)
+            postProcessStack.UpdateParameter();
     }
 
     void CreateRT(ref RenderTexture rt)
@@ -221,8 +254,9 @@ public class RayTracing : MonoBehaviour
     void InitLight()
     {
         Vector3 dir = mainLight.transform.forward;
-        cs.SetVector("lightParameter", new Vector4(dir.x, dir.y, dir.z, mainLight.intensity));
-        cs.SetVector("lightColor", mainLight.color);
+        cs.SetVector("lightParameter", new Vector4(dir.x, dir.y, dir.z, lightRadius));
+        //cs.SetVector("lightColor", new Vector4(mainLight.color.r, mainLight.color.g, mainLight.color.b, mainLight.intensity));
+        cs.SetVector("lightColor", new Vector4(mainLight.color.r, mainLight.color.g, mainLight.color.b, skyboxIntensityMulitiply));
         cs.SetVector("shadowParameter", new Vector4(shadowColor.r, shadowColor.g, shadowColor.b, shadowIntensity));
 
         ////////////// chapter5_4 //////////////
@@ -290,8 +324,12 @@ public class RayTracing : MonoBehaviour
         if (convergedRT != null)
             convergedRT.Release();
 
-        ////////////// chapter7_1 //////////////
-        if (ao != null)
-            ao.Release();
+        ////////////// chapter7_2 //////////////
+        if (shadowMap != null)
+            shadowMap.Release();
+
+        ////////////// chapter7_3 //////////////
+        if (postProcessRT != null)
+            postProcessRT.Release();
     }
 }

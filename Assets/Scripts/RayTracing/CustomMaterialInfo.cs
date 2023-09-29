@@ -24,7 +24,7 @@ public class CustomMaterialInfo : MonoBehaviour
         float[] smoothnessArray = new float[6];
         float[] transparentArray = new float[6];
         float[] iorArray = new float[6];
-        // 使用标记位来区分不同材质, 0：default opacity, 1: transparent, 2: emission, 3: clear coat
+        // 使用标记位来区分不同材质, 0：default opacity, 1: transparent, 2: emission, 3: clear coat, 4: matte mask
         int materialType = 0;
 
         switch (index)

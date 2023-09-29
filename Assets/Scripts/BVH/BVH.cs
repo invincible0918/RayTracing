@@ -29,10 +29,11 @@ public class BVH : MonoBehaviour
         public float smoothness;
         public float transparent;
         public Vector3 emissionColor;
-        // 使用标记位来区分不同材质, 0：default opacity, 1: transparent, 2: emission, 3: clear coat
+        // 使用标记位来区分不同材质, 0：default opacity, 1: transparent, 2: emission, 3: clear coat, 4: matte mask
         public uint materialType;
         ////////////// chapter6_5 //////////////
         public float ior;
+        public Vector3 clearCoatColor;
 
         public MaterialData(Material mat)
         {
@@ -41,6 +42,7 @@ public class BVH : MonoBehaviour
             smoothness = Mathf.Max(0.01f, mat.GetFloat("_Glossiness"));
             transparent = -1;
             emissionColor = Vector3.zero;
+            clearCoatColor = Vector3.zero;
 
             ////////////// chapter6_5 //////////////
             if (mat.HasProperty("_MaterialType"))
@@ -52,6 +54,12 @@ public class BVH : MonoBehaviour
                 ior = mat.GetFloat("_IOR");
             else
                 ior = 1f;
+
+            if (mat.HasProperty("_ClearCoatColor") && materialType == 3)
+            {
+                Color col = mat.GetColor("_ClearCoatColor");
+                clearCoatColor = new Vector3(col.r, col.g, col.b);
+            }
 
             if ((int)(mat.GetFloat("_Mode")) == 3)
             {
@@ -97,7 +105,7 @@ public class BVH : MonoBehaviour
     int kernelHandle;
 
     ////////////// chapter4_3 //////////////
-    public void Init(ComputeShader shader, int handle, int kernelHandleAO = -1)
+    public void Init(ComputeShader shader, int handle, int kernelHandleShadowMap = -1)
     {
         ////////////// chapter4_7 //////////////
         /// 测试BVH的开销
@@ -176,16 +184,17 @@ public class BVH : MonoBehaviour
         rayTracingShader.SetBuffer(kernelHandle, "triangleDataBuffer", container.triangleDataBuffer);
         rayTracingShader.SetBuffer(kernelHandle, "materialDataBuffer", materialDataBuffer);
 
-        ////////////// chapter7_1 //////////////
-        if (kernelHandleAO > 0)
+        ////////////// chapter7_2 //////////////
+        if (kernelHandleShadowMap > 0)
         {
-            rayTracingShader.SetBuffer(kernelHandleAO, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "triangleAABBBuffer", container.triangleAABBBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "bvhDataBuffer", container.bvhDataBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "triangleDataBuffer", container.triangleDataBuffer);
-            rayTracingShader.SetBuffer(kernelHandleAO, "materialDataBuffer", materialDataBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "sortedTriangleIndexBuffer", container.triangleIndexBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "triangleAABBBuffer", container.triangleAABBBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "bvhInternalNodeBuffer", container.bvhInternalNodeBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "bvhLeafNodeBuffer", container.bvhLeafNodeBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "bvhDataBuffer", container.bvhDataBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "triangleDataBuffer", container.triangleDataBuffer);
+            rayTracingShader.SetBuffer(kernelHandleShadowMap, "materialDataBuffer", materialDataBuffer);
+
         }
     }
 

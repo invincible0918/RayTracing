@@ -2,7 +2,7 @@
 #define _SHADOW_
 
 static const int NUM_SHADOW_RAYS = 16; 
-static const float LIGHT_RADIUS = 0.1f; 
+//static const float LIGHT_RADIUS = 0.2f; 
 
 static const float2 BLUE_NOISE_IN_DISK[64] = {
     float2(0.478712,0.875764),
@@ -81,7 +81,7 @@ float3 HardShadow(float3 origin, float3 lightDir)
 		return 1;
 }
 
-float3 SoftShadow(float3 origin, float3 lightDir)
+float3 SoftShadow(float3 origin, float3 lightDir, float lightRadius)
 {
     float blueNoise = Rand();
     float theta = blueNoise * 2.0 * PI;
@@ -100,7 +100,7 @@ float3 SoftShadow(float3 origin, float3 lightDir)
         float2 diskPoint;
         diskPoint.x = samplePos.x * cosTheta - samplePos.y * sinTheta;
         diskPoint.y = samplePos.x * sinTheta + samplePos.y * cosTheta;
-        diskPoint *= LIGHT_RADIUS;
+        diskPoint *= lightRadius;
 
         shadowRayDir = normalize(lightDir + diskPoint.x * lightTangent + diskPoint.y * lightBitangent);
 

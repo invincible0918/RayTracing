@@ -1,6 +1,6 @@
 #pragma kernel CSMain
-//////////////// chapter7_1 //////////////
-#pragma kernel AmbientOcclusion
+//////////////// chapter7_2 //////////////
+#pragma kernel ShadowMap
 
 //////////////// chapter4_7 //////////////
 #pragma multi_compile __ BVH
@@ -21,6 +21,9 @@
 #pragma multi_compile __ AREA_LIGHT
 #pragma multi_compile __ DISC_LIGHT
 
+//////////////// chapter7_6 //////////////
+#pragma multi_compile __ DEPTH_OF_FIELD
+
 ////////////// chapter2_1 //////////////
 #include "Header.cginc"
 #include "BruteForceRayTracing.cginc"
@@ -29,8 +32,6 @@
 #include "./Assets/Shaders/BVH/BVHRayTracing.cginc"
 ////////////// chapter5_4 //////////////
 #include "Shadow.cginc"
-////////////// chapter7_1 //////////////
-#include "AmbientOcclusion.cginc"
 
 ////////////// chapter2_1 //////////////
 RWTexture2D<float4> destination;
@@ -56,7 +57,12 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     //float2 uv = float2((id.xy + pixelOffset.xy - 0.5) / float2(width, height)) * 2 - 1;
     float2 uv = float2((id.xy + float2(Rand(), Rand()) - 0.5) / float2(width, height)) * 2 - 1;
 
+    //////////////// chapter7_6 //////////////
+#ifdef DEPTH_OF_FIELD
+    Ray ray = CreateDoFCameraRay(uv);
+#else
     Ray ray = CreateCameraRay(uv);
+#endif
 
     ////////////// chapter2_2 //////////////
     // 主要的光线追踪反弹循环
@@ -70,8 +76,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         RayHit hit = BruteForceRayTrace(ray);
 #endif
         //////////////// chapter5_4 //////////////
-        ////float3 shadow = HardShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
-        //float3 shadow = SoftShadow(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
+        ////float3 shadow = HardShadow(hit.position + hit.normal * NORMAL_BIAS, -lightParameter.xyz);
+        //float3 shadow = SoftShadow(hit.position + hit.normal * NORMAL_BIAS, -lightParameter.xyz);
         //ray.energy *= shadow;
 
         col += ray.energy * Shade(hit, /*inout*/ ray);
@@ -81,18 +87,14 @@ void CSMain (uint3 id : SV_DispatchThreadID)
             break;
     }
 
-    //////////////// chapter6_6 //////////////
-    // 最终输出从linear color space 到 sRGB color space
-    col = LinearToSRGB(col);
-
     destination[id.xy] = float4(col, 0.0);
 }
 
-//////////////// chapter7_1 //////////////
-RWTexture2D<float4> ao;
+//////////////// chapter7_2 //////////////
+RWTexture2D<float4> shadowMap;
 
 [numthreads(8,8,1)]
-void AmbientOcclusion (uint3 id : SV_DispatchThreadID)
+void ShadowMap (uint3 id : SV_DispatchThreadID)
 {
     _pixel = id.xy;
 
@@ -100,19 +102,31 @@ void AmbientOcclusion (uint3 id : SV_DispatchThreadID)
 
     float2 uv = float2((id.xy + float2(Rand(), Rand()) - 0.5) / float2(width, height)) * 2 - 1;
 
+    //////////////// chapter7_6 //////////////
+#ifdef DEPTH_OF_FIELD
+    Ray ray = CreateDoFCameraRay(uv);
+#else
     Ray ray = CreateCameraRay(uv);
+#endif
 
-    float3 col = float3(0, 0, 0);
-    for (int i = 0; i < MAX_BOUNCE; i++)
+    RayHit hit = BVHRayTrace(ray);
+
+    if (hit.distance < 1.#INF)
     {
-        RayHit hit = BVHRayTrace(ray);
-
-	    col += ray.energy * AmbientOcclusionShade(hit, /*inout*/ ray);
-
-        if (!any(ray.energy))   // any(x): x!=0 return true
-            break;
+        float3 shadow = SoftShadow(hit.position + hit.normal * NORMAL_BIAS, -lightParameter.xyz, lightParameter.w);
+        
+        //////////////// chapter7_3 //////////////
+        //shadowMap[id.xy] = float4(shadow, 1);
+        if (hit.materialType == 4)
+		    shadowMap[id.xy] = float4(shadow, 0);
+        else
+            shadowMap[id.xy] = float4(shadow, 1);
     }
-
-    ao[id.xy] = float4(col, 0.0);
+    else
+    {
+        //////////////// chapter7_3 //////////////
+        //shadowMap[id.xy] = 1;
+        shadowMap[id.xy] = float4(1, 1, 1, 0);
+    }
 }
 

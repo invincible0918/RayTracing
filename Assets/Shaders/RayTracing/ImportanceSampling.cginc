@@ -72,7 +72,7 @@ float3 UniformSampling(RayHit hit, inout Ray ray)
     float theta = acos(1 - Rand());
     float phi = 2.0 * PI * Rand();
 
-	ray.origin = hit.position + hit.normal * 0.01f;
+	ray.origin = hit.position + hit.normal * NORMAL_BIAS;
 	ray.direction = Tangent2World(theta, phi, hit.normal);
 
     float pdf = 1.0 / (2.0 * PI);
@@ -88,7 +88,7 @@ float3 CosineWeightedSampling(RayHit hit, inout Ray ray)
     float theta = acos(sqrt(1 - Rand()));
     float phi = 2.0 * PI * Rand();
 
-	ray.origin = hit.position + hit.normal * 0.01f;
+	ray.origin = hit.position + hit.normal * NORMAL_BIAS;
 	ray.direction = Tangent2World(theta, phi, hit.normal);
 
     //float pdf = cos / PI;
@@ -110,7 +110,7 @@ void SphereLightImportanceSampling(RayHit hit, inout Ray ray, SphereLight light,
     float phi = 2.0 * PI * Rand();
 
     float3 direction = normalize(dir);
-	ray.origin = hit.position + hit.normal * 0.01f;
+	ray.origin = hit.position + hit.normal * NORMAL_BIAS;
 	ray.direction = Tangent2World(theta, phi, direction);
 
     pdf = 1.0 / (2.0 * PI * (1 - maxCos));
@@ -130,7 +130,7 @@ void AreaLightImportanceSampling(RayHit hit, inout Ray ray, AreaLight light, out
     float3x3 m = float3x3(binormal, light.normal, light.up);
     float3 pointWS = mul(pointOnArea, m) + light.position;
 
-    ray.origin = hit.position + hit.normal * 0.001f;
+    ray.origin = hit.position + hit.normal * NORMAL_BIAS;
     ray.direction = pointWS - hit.position;
 
     float distanceSquard = dot(ray.direction, ray.direction);
@@ -152,7 +152,7 @@ void DiscLightImportanceSampling(RayHit hit, inout Ray ray, DiscLight light, out
     float3 direction = normalize(light.position - hit.position);
     // Transform direction to world space
 
-    ray.origin = hit.position + hit.normal * 0.001f;
+    ray.origin = hit.position + hit.normal * NORMAL_BIAS;
     ray.direction = Tangent2World(theta, phi, direction);
 
     func = hit.albedo / PI * saturate(dot(hit.normal, ray.direction));
@@ -248,6 +248,7 @@ void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
         reflectionDir = specularReflectionDir;
 
     // BTDF, 产生折射的材质
+    float3 clearCoatColor = 0;
     if (hit.materialType == 1 || hit.materialType == 3)
     {
         bool fromOutside = dot(ray.direction, hit.normal) < 0;
@@ -266,9 +267,13 @@ void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
                  hit.normal,
                  COLOR_SPACE_DIELECTRIC_SPEC.r,
                  1.0f);
+
+            clearCoatColor = hit.clearCoatColor * pow(specularChance, 4) * 10;
             
             specularChance = pow(specularChance, eta * eta * eta * eta);
-            reflectionDir = lerp(diffuseReflectionDir, specularReflectionDir, Rand() < specularChance);
+            //specularRoatio *= specularChance;
+            //reflectionDir = lerp(diffuseReflectionDir, specularReflectionDir, Rand() < specularChance);
+            reflectionDir = lerp(diffuseReflectionDir, reflectionDir, Rand() < specularChance);
         }
         else if (hit.materialType == 1 && Rand() > hit.transparent)
         {
@@ -297,13 +302,8 @@ void _BSDFImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out flo
 
     BRDF(hit.materialType, viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, /*out */func, /*out */pdf);
 
-    ray.origin = hit.position + hit.normal * 0.001f;
+    ray.origin = hit.position + hit.normal * NORMAL_BIAS;
     ray.direction = reflectionDir;
-
-    //if (hit.materialType == 4)
-    //{
-    //    ray.direction = -viewDir;
-    //}
 }
 
 void _BSDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inout Ray ray, out float3 func, out float pdf)
@@ -321,7 +321,7 @@ void _BSDFImportanceSampling(float3 inputDir, float3 outputDir, RayHit hit, inou
 
     BRDF(hit.materialType, viewDir, halfDir, lightDir, hit.albedo, hit.normal, hit.metallic, perceptualRoughness, roughness, diffuseRatio, specularRoatio, /*out */func, /*out */pdf);
 
-    ray.origin = hit.position + hit.normal * 0.001f;
+    ray.origin = hit.position + hit.normal * NORMAL_BIAS;
     ray.direction = outputDir;
 }
 

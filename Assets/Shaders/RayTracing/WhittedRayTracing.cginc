@@ -20,7 +20,7 @@ float3 WhittedRayTracing(RayHit hit, inout Ray ray)
 {
 	////////////////// chapter3_4 //////////////
 	//float3 shadow = 1;
-	//Ray shadowRay = CreateRay(hit.position + hit.normal * 0.01f, -lightParameter.xyz);
+	//Ray shadowRay = CreateRay(hit.position + hit.normal * NORMAL_BIAS, -lightParameter.xyz);
 	//RayHit shadowHit = BruteForceRayTrace(shadowRay);
 	//if (shadowHit.distance != 1.#INF)
 	//{
@@ -36,7 +36,7 @@ float3 WhittedRayTracing(RayHit hit, inout Ray ray)
 	{
 		////////////// chapter3_1 //////////////
 		// 实现完全镜面反射
-		ray.origin = hit.position + hit.normal * 0.01f;
+		ray.origin = hit.position + hit.normal * NORMAL_BIAS;
 		//ray.direction = reflectFunction(ray.direction, hit.normal);
 		ray.direction = reflect(ray.direction, hit.normal);
 	}

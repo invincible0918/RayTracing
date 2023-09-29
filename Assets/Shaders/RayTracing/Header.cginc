@@ -2,7 +2,7 @@
 #define _HEADER_
 
 ////////////// chapter2_1 //////////////
-#define MAX_BOUNCE 6
+#define MAX_BOUNCE 8
 
 ////////////// chapter2_2 //////////////
 float4x4 camera2World;
@@ -18,6 +18,15 @@ static const float EPSILON = 1e-8;
 
 ////////////// chapter5_2 //////////////
 static const float PI = 3.14159265f;
+
+////////////// chapter7_2 //////////////
+static const float NORMAL_BIAS = 0.001f;
+
+////////////// chapter7_6 //////////////
+#ifdef DEPTH_OF_FIELD
+    float _LensRadius;
+    float _FocalLength;
+#endif
 
 ////////////// chapter2_1 //////////////
 struct Ray
@@ -45,42 +54,8 @@ struct RayHit
     int receiveShadow;
     ////////////// chapter6_5 //////////////
     float ior;
+    float3 clearCoatColor;
 };
-
-////////////// chapter2_1 //////////////
-Ray CreateRay(float3 origin, float3 direction)
-{
-	Ray ray;
-    ray.origin = origin;
-    ray.direction = direction;
-    // chapter3_1
-    ray.energy = float3(1.0f, 1.0f, 1.0f);
-
-	return ray;
-}
-
-Ray CreateCameraRay(float2 uv)
-{
-    ////////////// chapter2_2 //////////////
-    float3 origin = mul(camera2World, float4(0, 0, 0, 1)).xyz;
-
-    // 反转观察坐标系的透视投影到摄像机坐标系
-    float3 direction = mul(cameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
-    // 再从摄像机坐标系转到世界坐标系
-    direction = mul(camera2World, float4(direction, 0.0f)).xyz;
-    direction = normalize(direction);
-
-	return CreateRay(origin, direction);
-}
-
-RayHit CreateRayHit()
-{
-    RayHit hit;
-    hit.position = float3(0.0f, 0.0f, 0.0f);
-    hit.distance = 1.#INF;
-    hit.normal = float3(0.0f, 0.0f, 0.0f);
-    return hit;
-}
 
 ////////////// chapter5_2 //////////////
 float2 _pixel;
@@ -118,6 +93,90 @@ float Rand()
     //float result = frac(sin(seed / 100.0f * dot(_pixel, float2(12.9898f, 78.233f))) * 43758.5453f);
     //seed += 1.0f;
     //return result;
+}
+
+////////////// chapter2_1 //////////////
+Ray CreateRay(float3 origin, float3 direction)
+{
+	Ray ray;
+    ray.origin = origin;
+    ray.direction = direction;
+    // chapter3_1
+    ray.energy = float3(1.0f, 1.0f, 1.0f);
+
+	return ray;
+}
+
+Ray CreateCameraRay(float2 uv)
+{
+    ////////////// chapter2_2 //////////////
+    float3 origin = mul(camera2World, float4(0, 0, 0, 1)).xyz;
+
+    // 反转观察坐标系的透视投影到摄像机坐标系
+    float3 direction = mul(cameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    // 再从摄像机坐标系转到世界坐标系
+    direction = mul(camera2World, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+	return CreateRay(origin, direction);
+}
+
+////////////// chapter7_6 //////////////
+#ifdef DEPTH_OF_FIELD
+float2 ConcentricSampleDisk(float2 u)
+{
+    // 随机数 u 从 (0, 1) 转换到 (-1, 1)
+    float2 u1 = float2(u.x * 2.0f - 1, u.y * 2.0f - 1);
+
+    if (u1.x == 0 && u1.y == 0)
+		return float2(0, 0);
+
+    // 采样出来的随机数符合在圆盘内
+    // x = sin(theta) * radius, y = cos(theta) * radius
+    // r = x, theta = y/x * PI / 4
+    float theta, r;
+    if (abs(u1.x) > abs(u1.y))
+	{
+		r = u1.x;
+		theta = u1.y / u1.x * PI / 4;
+	}
+    else
+    {
+        r = u1.y;
+		theta = PI / 2 - u1.x / u1.y * PI / 4;
+    }
+    return r * float2(cos(theta), sin(theta));
+}
+
+Ray CreateDoFCameraRay(float2 uv)
+{
+    float3 origin = 0;
+    // 反转观察坐标系的透视投影到摄像机坐标系
+    float3 direction = mul(cameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+    // offset 是采样一个圆盘上的随机位置
+    float2 offset = ConcentricSampleDisk(float2(Rand(), Rand())) * _LensRadius;
+
+    float ft = abs(_FocalLength / direction.z);
+    float3 focusPoint = origin + direction * ft;
+    origin = float3(offset, 0);
+    direction = normalize(focusPoint - origin);
+
+    // 再从摄像机坐标系转到世界坐标系
+    origin = mul(camera2World, float4(origin, 1)).xyz;
+    direction = mul(camera2World, float4(direction, 0.0f)).xyz;
+    direction = normalize(direction);
+
+    return CreateRay(origin, direction);
+}
+#endif
+
+RayHit CreateRayHit()
+{
+    RayHit hit;
+    hit.position = float3(0.0f, 0.0f, 0.0f);
+    hit.distance = 1.#INF;
+    hit.normal = float3(0.0f, 0.0f, 0.0f);
+    return hit;
 }
 
 ////////////// chapter6_6 //////////////

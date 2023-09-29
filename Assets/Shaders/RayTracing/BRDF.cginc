@@ -169,14 +169,14 @@ void BRDF(uint materialType,
     float specularPdf;
     float3 specularBRDF = SpecularBRDF(specColor, normal, viewDir, halfDir, lightDir, roughness, /*out*/ F, /*out*/ specularPdf);
 
+    float3 lc = lightColor.rgb * lightColor.a; 
     float3 kS = F;
     float3 kD = 1.0 - kS;
     kD *= 1.0 - metallic;
-
-    float3 totalBRDF = (diffuseBRDF * kD + specularBRDF) * saturate(dot(normal, lightDir));
+    float3 totalBRDF = (diffuseBRDF * kD * lc / 2 + specularBRDF * lc) * saturate(dot(normal, lightDir));
     float totalPdf = diffusePdf * diffuseRatio + specularPdf * specularRoatio;
-    
-    func = totalBRDF;
+
+    func = totalBRDF/* * lc*/;
     pdf = totalPdf;
 }
 

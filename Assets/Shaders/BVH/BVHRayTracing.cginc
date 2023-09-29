@@ -10,9 +10,10 @@ struct MaterialData
     float smoothness;
     float transparent;
     float3 emissionColor;
-    uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat  
+    uint materialType;           // 0: default opacity, 1: transparent, 2: emission, 3: clear coat, 4: matte mask
     ////////////// chapter6_5 //////////////
     float ior;
+    float3 clearCoatColor;
 };
 
 StructuredBuffer<uint> sortedTriangleIndexBuffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
@@ -66,6 +67,7 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
                 hit.materialType = materialData.materialType;
                 ////////////// chapter6_5 //////////////
                 hit.ior = materialData.ior;
+                hit.clearCoatColor = materialData.clearCoatColor;
                 hit.castShadow = tri.castShadow;
                 hit.receiveShadow = tri.receiveShadow;
             }

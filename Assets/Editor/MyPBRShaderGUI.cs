@@ -63,6 +63,7 @@ namespace UnityEditor
         MaterialProperty blendMode = null;
         MaterialProperty albedoMap = null;
         MaterialProperty albedoColor = null;
+        MaterialProperty clearCoatColor = null;
         MaterialProperty alphaCutoff = null;
         MaterialProperty specularMap = null;
         MaterialProperty specularColor = null;
@@ -99,6 +100,7 @@ namespace UnityEditor
             blendMode = FindProperty("_Mode", props);
             albedoMap = FindProperty("_MainTex", props);
             albedoColor = FindProperty("_Color", props);
+            clearCoatColor = FindProperty("_ClearCoatColor", props);
             alphaCutoff = FindProperty("_Cutoff", props);
             specularMap = FindProperty("_SpecGlossMap", props, false);
             specularColor = FindProperty("_SpecColor", props, false);
@@ -164,6 +166,7 @@ namespace UnityEditor
                 // Primary properties
                 GUILayout.Label(Styles.primaryMapsText, EditorStyles.boldLabel);
                 DoAlbedoArea(material);
+                DoClearCoatArea(material);
                 DoSpecularMetallicArea();
                 ////////////// chapter6_5 //////////////
                 m_MaterialEditor.ShaderProperty(ior, Styles.iorText, 2);
@@ -286,6 +289,14 @@ namespace UnityEditor
             if (((BlendMode)material.GetFloat("_Mode") == BlendMode.Cutout))
             {
                 m_MaterialEditor.ShaderProperty(alphaCutoff, Styles.alphaCutoffText.text, MaterialEditor.kMiniTextureFieldLabelIndentLevel + 1);
+            }
+        }
+
+        void DoClearCoatArea(Material material)
+        {
+            if ((int)material.GetFloat("_MaterialType") == 3)
+            {
+                m_MaterialEditor.ColorProperty(clearCoatColor, "Clear Coat Color");
             }
         }
 

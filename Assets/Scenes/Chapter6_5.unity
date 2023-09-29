@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.5199697, g: 0.5406465, b: 0.5579422, a: 1}
+  m_IndirectSpecularColor: {r: 0.25921822, g: 0.28052047, b: 0.31545553, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -4290,7 +4290,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!108 &784492501
 Light:
   m_ObjectHideFlags: 0
@@ -13007,6 +13007,7 @@ MonoBehaviour:
   skyboxMat: {fileID: 2100000, guid: f0a26ee4dcd5d01408cc8bc92da04700, type: 2}
   mainLight: {fileID: 784492501}
   shadowColor: {r: 0.21568629, g: 0.24313727, b: 0.2901961, a: 1}
+  lightRadius: 0.1
   shadowIntensity: 1
   aliasing: 1
   samplePrePixel: 0
@@ -13015,6 +13016,11 @@ MonoBehaviour:
   useBVH: 1
   samplingType: 4
   lightImportanceSampling: {fileID: 896933714}
+  matteMaskGO: {fileID: 0}
+  shadowMap: {fileID: 0}
+  postProcessStack: {fileID: 0}
+  enablePostProcess: 0
+  postProcessRT: {fileID: 0}
 --- !u!1 &2124718957
 GameObject:
   m_ObjectHideFlags: 0

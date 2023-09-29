@@ -63,8 +63,8 @@ float3 Shade(RayHit hit, inout Ray ray)
             return hit.emissionColor;
 		else if (hit.materialType == 4)
 		{
-			ray.origin = hit.position - hit.normal * 0.001f;
-			//ray.direction = Tangent2World(theta, phi, direction);
+			ray.origin = hit.position - hit.normal * NORMAL_BIAS;
+			// ray.direction 不要修改，继续沿原方向进行传递
 			return 0;
 		}
 		else
@@ -75,6 +75,9 @@ float3 Shade(RayHit hit, inout Ray ray)
 	}
 	else
 	{
+		//ray.energy *= 1.0f;
+		//return 1;
+
 		ray.energy = 0.0f;
 
 		// 如果射线和场景没有交点，则需要采集cubemap
@@ -88,31 +91,14 @@ float3 Shade(RayHit hit, inout Ray ray)
 		float3 dir = RotateAroundYInDegrees(ray.direction, -skyboxRotation);
 
 		float3 skyboxColor = skyboxCube.SampleLevel(sampler_LinearClamp, dir, 0).rgb;
-
 		//////////////// chapter6_6 //////////////
 		//skyboxColor *= pow(saturate(skyboxExposure), 2.2);
+		skyboxColor = LinearToSRGB(skyboxColor);
+		skyboxColor = saturate(skyboxColor) * skyboxExposure;
 		skyboxColor = SRGBToLinear(skyboxColor);
-		skyboxColor = pow(saturate(skyboxColor), skyboxExposure);
 
 		return skyboxColor;
 	}
 }
-
-////////////// chapter7_1 //////////////
-float3 AmbientOcclusionShade(RayHit hit, inout Ray ray)
-{
-	if (hit.distance < 1.#INF)
-	{
-		CosineWeightedSampling(hit, /*inout */ray);
-		ray.energy *= 1;
-        return 0;
-	}
-	else
-	{
-		ray.energy = 0.0f;
-		return 1;
-	}
-}
-
 
 #endif
