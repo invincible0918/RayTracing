@@ -3826,7 +3826,7 @@ MonoBehaviour:
   convergedRT: {fileID: 0}
   bvh: {fileID: 707062027}
   useBVH: 1
-  samplingType: 4
+  samplingType: 0
   lightImportanceSampling: {fileID: 1471457887}
   matteMaskGO: {fileID: 0}
   shadowMap: {fileID: 0}

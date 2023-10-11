@@ -44,20 +44,20 @@ void CheckTriangle(uint triangleIndex, Ray ray, inout RayHit hit)
     {
         const Triangle tri = triangleDataBuffer[triangleIndex];
 
-        // t: ÉäÏßÔ´µãºÍÈý½ÇÃæµÄ½»µãµÄ¾àÀë
-        // u: ½»µãÔÚÈý½ÇÃæu·½ÏòµÄ°Ù·Ö±È, ´Ó0µ½1
-        // v: ½»µãÔÚÈý½ÇÃæv·½ÏòµÄ°Ù·Ö±È, ´Ó0µ½1
+        // t: å°„çº¿æºç‚¹å’Œä¸‰è§’é¢çš„äº¤ç‚¹çš„è·ç¦»
+        // u: äº¤ç‚¹åœ¨ä¸‰è§’é¢uæ–¹å‘çš„ç™¾åˆ†æ¯”, ä»Ž0åˆ°1
+        // v: äº¤ç‚¹åœ¨ä¸‰è§’é¢væ–¹å‘çš„ç™¾åˆ†æ¯”, ä»Ž0åˆ°1
         float t, u, v;
         if (IntersectTriangle_MT97(ray, tri.point0, tri.point1, tri.point2, /*inout */t, /*inout */u, /*inout */v))
         {
-            // ÓÐ½»µã²¢ÇÒÔÚÈý½ÇÃæµÄÕýÃæ³¯ÏòµÄ»°
+            // æœ‰äº¤ç‚¹å¹¶ä¸”åœ¨ä¸‰è§’é¢çš„æ­£é¢æœå‘çš„è¯
             if (t > 0 && t < hit.distance)
             {
                 hit.distance = t;
                 hit.position = ray.origin + t * ray.direction;
                 hit.normal = normalize((1 - u - v) * tri.normal0 + u * tri.normal1 + v * tri.normal2);
             
-                // ´«µÝ²ÄÖÊ
+                // ä¼ é€’æè´¨
                 MaterialData materialData = materialDataBuffer[tri.materialIndex];
                 hit.albedo = materialData.albedo;
                 hit.metallic = materialData.metallic;
@@ -87,13 +87,13 @@ void IntersectTriangle(Ray ray, inout RayHit hit)
 		currentStackIndex --;
         const uint index = stack[currentStackIndex];
 
-		// Èç¹ûµ±Ç°rayºÍ µ±Ç°bvh data²»Ïà½»£¬Ôò½øÐÐÏÂÒ»ÂÖµü´ú
+		// å¦‚æžœå½“å‰rayå’Œ å½“å‰bvh dataä¸ç›¸äº¤ï¼Œåˆ™è¿›è¡Œä¸‹ä¸€è½®è¿­ä»£
 		if (!RayBoxIntersection(bvhDataBuffer[index], ray))
         {
             continue;
         }
 
-		// ¿ªÊ¼ÅÐ¶ÏÊÇ·ñºÍ×ó/ÓÒ½ÚµãÏà½»
+		// å¼€å§‹åˆ¤æ–­æ˜¯å¦å’Œå·¦/å³èŠ‚ç‚¹ç›¸äº¤
 		const uint leftIndex = bvhInternalNodeBuffer[index].leftNode;
         const uint leftType = bvhInternalNodeBuffer[index].leftNodeType;
 		if (leftType == INTERNAL_NODE)
@@ -126,7 +126,7 @@ RayHit BVHRayTrace(Ray ray)
 {
 	RayHit hit = CreateRayHit();
 
-	// ´¦ÀíÉäÏßºÍ³¡¾°µÄ½»»¥
+	// å¤„ç†å°„çº¿å’Œåœºæ™¯çš„äº¤äº’
 	IntersectTriangle(ray, /*inout */hit);
 
 	return hit;

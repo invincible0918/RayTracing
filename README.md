@@ -15,14 +15,34 @@ This project is implemented by pure vertex shader, fragment shader and compute s
 - Bloom
 - Color correction and color grading
 
-## ScreenShops
-### Uniform Sampling
+## Importance Sampling
+### Uniform sampling
 ![](Assets/Outputs/UniformSampling.png)
-### Cosine Weighted Sampling
+### Cosine weighted sampling
 ![](Assets/Outputs/CosineSampling.png)
-### Light Sampling
+### Light sampling
 ![](Assets/Outputs/LightSampling.png)
-### Cornell Box
+### Cornell box
 ![](Assets/Outputs/CornellBox.png)
-### Multiple Importance Sampling
+### Multiple importance sampling
 ![](Assets/Outputs/MIS.png)
+## Physical Base Material
+### Opaque spheres of increasing surface smoothness, metallic = 0
+![](Assets/Outputs/pbr0.png)
+### Opaque spheres of increasing surface smoothness, metallic = 1
+![](Assets/Outputs/pbr1.png)
+### Transparent  spheres of increasing surface smoothness, metallic = 0
+![](Assets/Outputs/pbr2.png)
+### Transparent spheres of increasing IOR
+![](Assets/Outputs/pbr3.png)
+### Opaque spheres of increasing IOR
+![](Assets/Outputs/pbr4.png)
+### Transparent spheres becoming increasingly diffuse
+![](Assets/Outputs/pbr5.png)
+## High Quality Soft Shadow
+### Light radius = 0.01
+![](Assets/Outputs/soft_shadow0.png)
+### Light radius = 0.1
+![](Assets/Outputs/soft_shadow1.png)
+### Light radius = 0.5
+![](Assets/Outputs/soft_shadow2.png)
