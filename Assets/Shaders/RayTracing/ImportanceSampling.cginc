@@ -175,7 +175,7 @@ void _LightImportanceSampling(RayHit hit, inout Ray ray, out float3 func, out fl
     #endif
 
     #if defined(AREA_LIGHT)
-        AreaLightImportanceSampling(hit, ray, areaLightBuffer[Rand() * areaLightCount], func, pdf);
+        AreaLightImportanceSampling(hit, ray, areaLightBuffer[Rand() * areaLightCount], /*out*/func, /*out*/pdf);
     #endif
 #endif
     

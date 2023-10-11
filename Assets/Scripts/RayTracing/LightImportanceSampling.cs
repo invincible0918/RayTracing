@@ -59,11 +59,13 @@ public class LightImportanceSampling : MonoBehaviour
         ComputeShader rayTracingShader = shader;
         int kernelHandle = handle;
 
-        List<SphereLight> sphereLightList = new List<SphereLight>(from light in sphereLightParent.GetComponentsInChildren<Transform>(false) where light != sphereLightParent select new SphereLight(light));    // position, radius,
-        List<AreaLight> areaLightList = new List<AreaLight>(from light in areaLightParent.GetComponentsInChildren<Transform>(false) where light != areaLightParent select new AreaLight(light));      // position, forward, width, height, 8 float
-        List<DiscLight> discLightList = new List<DiscLight>(from light in discLightParent.GetComponentsInChildren<Transform>(false) where light != discLightParent select new DiscLight(light));      // position, forward, radius, 7 float
+        List<SphereLight> sphereLightList = new();
+        List<AreaLight> areaLightList = new();
+        List<DiscLight> discLightList = new();
 
-        if (sphereLightList.Count > 0)
+        if (sphereLightParent != null)
+            sphereLightList = new List<SphereLight>(from light in sphereLightParent.GetComponentsInChildren<Transform>(false) where light != sphereLightParent select new SphereLight(light));    // position, radius,
+        if(sphereLightList.Count > 0)
         {
             rayTracingShader.EnableKeyword("SPHERE_LIGHT");
 
@@ -75,6 +77,8 @@ public class LightImportanceSampling : MonoBehaviour
         else
             rayTracingShader.DisableKeyword("SPHERE_LIGHT");
 
+        if (areaLightParent != null)
+            areaLightList = new List<AreaLight>(from light in areaLightParent.GetComponentsInChildren<Transform>(false) where light != areaLightParent select new AreaLight(light));      // position, forward, width, height, 8 float
         if (areaLightList.Count > 0)
         {
             rayTracingShader.EnableKeyword("AREA_LIGHT");
@@ -87,6 +91,8 @@ public class LightImportanceSampling : MonoBehaviour
         else
             rayTracingShader.DisableKeyword("AREA_LIGHT");
 
+        if (discLightParent != null)
+            discLightList = new List<DiscLight>(from light in discLightParent.GetComponentsInChildren<Transform>(false) where light != discLightParent select new DiscLight(light));      // position, forward, radius, 7 float
         if (discLightList.Count > 0)
         {
             rayTracingShader.EnableKeyword("DISC_LIGHT");

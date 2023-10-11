@@ -70,6 +70,7 @@ float3 Shade(RayHit hit, inout Ray ray)
 		else
 		{
 			ray.energy *= FUNCTION_BSDF(hit, /*inout */ray);
+
             return 0;
 		}
 	}
