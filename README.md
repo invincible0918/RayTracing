@@ -15,19 +15,14 @@ This project is implemented by pure vertex shader, fragment shader and compute s
 - Bloom
 - Color correction and color grading
 
-## Scene Assets
-We can convert the tungsten json format to our own format which is also using json. Use the python tool(unity-raytracing/Assets/RayTracing/Editor/convert_tungsten.py) for converting the tungsten scene. You can download the tungsten scenes at https://benedikt-bitterli.me/resources/ . 
-  
 ## ScreenShops
-### cornell box
-![](ScreenShots/cornel-box.gif)
-### staircase2
-![](ScreenShots/staircase2.gif)
-### bathroom2
-20000 spp, Filmic tonemapping
-![](ScreenShots/bathroom2.png)
-### kitchen
-15000 spp, ACE tonemapping
-![](ScreenShots/kitchen.jpg)
-### depth of field and glass material
-![](ScreenShots/dof_glass.jpg)
+### Uniform Sampling
+![](Assets/Outputs/UniformSampling.png)
+### Cosine Weighted Sampling
+![](Assets/Outputs/CosineSampling.png)
+### Light Sampling
+![](Assets/Outputs/LightSampling.png)
+### Cornell Box
+![](Assets/Outputs/CornellBox.png)
+### Multiple Importance Sampling
+![](Assets/Outputs/MIS.png)

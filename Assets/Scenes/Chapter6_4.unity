@@ -4939,6 +4939,7 @@ GameObject:
   - component: {fileID: 2120131161}
   - component: {fileID: 2120131160}
   - component: {fileID: 2120131163}
+  - component: {fileID: 2120131164}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -5029,7 +5030,9 @@ MonoBehaviour:
   meshCollector: {fileID: 0}
   skyboxMat: {fileID: 2100000, guid: 19df323cd6a19644f8faee6eab2a3cfc, type: 2}
   mainLight: {fileID: 784492501}
+  skyboxIntensityMulitiply: 1
   shadowColor: {r: 0.21568629, g: 0.24313727, b: 0.2901961, a: 1}
+  lightRadius: 0.1
   shadowIntensity: 1
   aliasing: 1
   samplePrePixel: 0
@@ -5038,6 +5041,25 @@ MonoBehaviour:
   useBVH: 1
   samplingType: 4
   lightImportanceSampling: {fileID: 896933714}
+  matteMaskGO: {fileID: 0}
+  shadowMap: {fileID: 0}
+  postProcessStack: {fileID: 0}
+  enablePostProcess: 0
+  postProcessRT: {fileID: 0}
+  pause: 0
+--- !u!114 &2120131164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a98bba995657c4fa78251ce6c8c28d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayTracing: {fileID: 2120131163}
 --- !u!1 &2141496947
 GameObject:
   m_ObjectHideFlags: 0

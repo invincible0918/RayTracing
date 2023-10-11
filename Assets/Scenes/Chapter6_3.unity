@@ -1561,7 +1561,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 971029636}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 7.82, y: 14.63, z: 0}
+  m_LocalPosition: {x: 7.82, y: 14.97, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1756,7 +1756,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1235475823}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -7.99, y: 14.63, z: 0}
+  m_LocalPosition: {x: -7.99, y: 14.97, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2422,7 +2422,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1907012395}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 14.63, z: 0}
+  m_LocalPosition: {x: 0, y: 14.97, z: 0}
   m_LocalScale: {x: 6, y: 6, z: 6}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2587,6 +2587,7 @@ GameObject:
   - component: {fileID: 2120131161}
   - component: {fileID: 2120131160}
   - component: {fileID: 2120131163}
+  - component: {fileID: 2120131164}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -2677,12 +2678,33 @@ MonoBehaviour:
   meshCollector: {fileID: 0}
   skyboxMat: {fileID: 2100000, guid: a9c791d590ae7774b9414e7849fdb066, type: 2}
   mainLight: {fileID: 784492501}
+  skyboxIntensityMulitiply: 1
   shadowColor: {r: 0.21568629, g: 0.24313727, b: 0.2901961, a: 1}
+  lightRadius: 0.1
   shadowIntensity: 1
   aliasing: 1
   samplePrePixel: 0
   convergedRT: {fileID: 0}
   bvh: {fileID: 707062027}
   useBVH: 1
-  samplingType: 3
+  samplingType: 4
   lightImportanceSampling: {fileID: 707062028}
+  matteMaskGO: {fileID: 0}
+  shadowMap: {fileID: 0}
+  postProcessStack: {fileID: 0}
+  enablePostProcess: 0
+  postProcessRT: {fileID: 0}
+  pause: 0
+--- !u!114 &2120131164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a98bba995657c4fa78251ce6c8c28d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayTracing: {fileID: 2120131163}
