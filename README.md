@@ -46,3 +46,7 @@ This project is implemented by pure vertex shader, fragment shader and compute s
 ![](Assets/Outputs/soft_shadow1.png)
 ### Light radius = 0.5
 ![](Assets/Outputs/soft_shadow2.png)
+## Realistic Car Rendering
+![](Assets/Outputs/car0.png)
+![](Assets/Outputs/car1.png)
+![](Assets/Outputs/car2.png)

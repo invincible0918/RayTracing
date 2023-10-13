@@ -56,30 +56,30 @@
     <Analyzer Include="C:\Program Files (x86)\Microsoft Visual Studio Tools for Unity\16.0\Analyzers\Microsoft.Unity.Analyzers.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Free HDR Skyboxes Pack\Example Scenes\Script\RotateCamera.cs" />
-    <Compile Include="Assets\Scripts\SampleHemisphere.cs" />
-    <Compile Include="Assets\Scripts\RayTracing\MeshCollector.cs" />
-    <Compile Include="Assets\Scripts\RayTracing\RayTracing.cs" />
-    <Compile Include="Assets\Scripts\BVH\BVH.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\DepthOfField.cs" />
-    <Compile Include="Assets\Scripts\SimpleTweenAnimation.cs" />
-    <Compile Include="Assets\Scripts\SaveTexture.cs" />
-    <Compile Include="Assets\Scripts\BVH\MeshBufferContainer.cs" />
-    <Compile Include="Assets\Scripts\RayTracing\CustomMaterialInfo.cs" />
-    <Compile Include="Assets\Scripts\BVH\BVHConstructor.cs" />
-    <Compile Include="Assets\Scripts\BVH\ComputeBufferSorter.cs" />
-    <Compile Include="Assets\Scripts\BVH\DataBuffer.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\ColorGrading.cs" />
     <Compile Include="Assets\Scripts\BVH\MeshData.cs" />
-    <Compile Include="Assets\Scripts\BVH\Constants.cs" />
-    <Compile Include="Assets\Scripts\BVH\RadixSortTest.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\Bloom.cs" />
-    <Compile Include="Assets\Scripts\CameraMovement.cs" />
+    <Compile Include="Assets\Scripts\SimpleTweenAnimation.cs" />
     <Compile Include="Assets\Scripts\RayTracing\LightImportanceSampling.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\PostProcessStack.cs" />
-    <Compile Include="Assets\Scripts\PostProcess\PostProcessBase.cs" />
+    <Compile Include="Assets\Scripts\BVH\MeshBufferContainer.cs" />
+    <Compile Include="Assets\Free HDR Skyboxes Pack\Example Scenes\Script\RotateCamera.cs" />
     <Compile Include="Assets\Scripts\BVH\SceneDataTypes.cs" />
     <Compile Include="Assets\Scripts\PostProcess\ColorCorrection.cs" />
+    <Compile Include="Assets\Scripts\SampleHemisphere.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\Bloom.cs" />
+    <Compile Include="Assets\Scripts\BVH\ComputeBufferSorter.cs" />
+    <Compile Include="Assets\Scripts\SaveTexture.cs" />
+    <Compile Include="Assets\Scripts\BVH\Constants.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\ColorGrading.cs" />
+    <Compile Include="Assets\Scripts\RayTracing\MeshCollector.cs" />
+    <Compile Include="Assets\Scripts\RayTracing\CustomMaterialInfo.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\PostProcessStack.cs" />
+    <Compile Include="Assets\Scripts\BVH\BVH.cs" />
+    <Compile Include="Assets\Scripts\CameraMovement.cs" />
+    <Compile Include="Assets\Scripts\BVH\RadixSortTest.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\DepthOfField.cs" />
+    <Compile Include="Assets\Scripts\BVH\DataBuffer.cs" />
+    <Compile Include="Assets\Scripts\PostProcess\PostProcessBase.cs" />
+    <Compile Include="Assets\Scripts\RayTracing\RayTracing.cs" />
+    <Compile Include="Assets\Scripts\BVH\BVHConstructor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\RayTracing\Shadow.cginc" />

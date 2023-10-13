@@ -2897,6 +2897,8 @@ GameObject:
   - component: {fileID: 2120131160}
   - component: {fileID: 2120131163}
   - component: {fileID: 2120131164}
+  - component: {fileID: 2120131165}
+  - component: {fileID: 2120131167}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -2969,7 +2971,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 8.154105, y: -92.15134, z: -0.29129943}
 --- !u!114 &2120131163
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3003,6 +3005,7 @@ MonoBehaviour:
   postProcessStack: {fileID: 0}
   enablePostProcess: 0
   postProcessRT: {fileID: 0}
+  pause: 0
 --- !u!114 &2120131164
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3010,11 +3013,12 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2120131159}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fb878f3ec08d0194381972040a56e9ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  moveType: 1
   target: {fileID: 1940835047}
   offset: {x: -1, y: 0.4, z: 0}
   xSpeed: 500
@@ -3026,6 +3030,40 @@ MonoBehaviour:
   distanceMax: 15
   rotationDamping: 0
   heightDamping: 0
+  animation: {fileID: 2120131167}
+  animationName: CameraTrack00
+--- !u!114 &2120131165
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a98bba995657c4fa78251ce6c8c28d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayTracing: {fileID: 2120131163}
+  cameraMovement: {fileID: 2120131164}
+  autoSave: 1
+  autoSaveSPP: 2000
+--- !u!111 &2120131167
+Animation:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Animation: {fileID: 7400000, guid: aa003970eb203614ea904f51b0755d0f, type: 2}
+  m_Animations:
+  - {fileID: 7400000, guid: aa003970eb203614ea904f51b0755d0f, type: 2}
+  m_WrapMode: 0
+  m_PlayAutomatically: 0
+  m_AnimatePhysics: 0
+  m_CullingType: 0
 --- !u!1 &2141496947
 GameObject:
   m_ObjectHideFlags: 0

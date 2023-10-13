@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.47212198, g: 0.4955992, b: 0.5182905, a: 1}
+  m_IndirectSpecularColor: {r: 0.13005768, g: 0.17934339, b: 0.2445113, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -2668,7 +2668,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.39460295
+      value: -0.83464164
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalRotation.x
@@ -2676,7 +2676,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.91885173
+      value: -0.5507934
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalRotation.z
@@ -2688,7 +2688,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 133.518
+      value: 426.84302
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 07368aaba9c8a8e4f83865571933275d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -2797,6 +2797,7 @@ GameObject:
   - component: {fileID: 2120131161}
   - component: {fileID: 2120131160}
   - component: {fileID: 2120131163}
+  - component: {fileID: 2120131164}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -2837,7 +2838,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 30
+  field of view: 35
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -2862,14 +2863,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2120131159}
-  m_LocalRotation: {x: -0.050464697, y: 0.7056399, z: -0.050565585, w: -0.7049601}
-  m_LocalPosition: {x: 5.550208, y: 1.3046621, z: -0.2716079}
+  m_LocalRotation: {x: -0.07170992, y: 0.60809624, z: -0.08994925, w: -0.78548443}
+  m_LocalPosition: {x: 4.46, y: 1.43, z: -0.82}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 12.829, y: -75.134, z: 3.18}
 --- !u!114 &2120131163
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2887,7 +2888,9 @@ MonoBehaviour:
   meshCollector: {fileID: 0}
   skyboxMat: {fileID: 2100000, guid: fe64dddea2b0e6b4e966a1a0ffcde6ca, type: 2}
   mainLight: {fileID: 784492501}
+  skyboxIntensityMulitiply: 2
   shadowColor: {r: 0.21568629, g: 0.24313727, b: 0.2901961, a: 1}
+  lightRadius: 0.1
   shadowIntensity: 1
   aliasing: 1
   samplePrePixel: 0
@@ -2896,6 +2899,25 @@ MonoBehaviour:
   useBVH: 1
   samplingType: 4
   lightImportanceSampling: {fileID: 896933714}
+  matteMaskGO: {fileID: 0}
+  shadowMap: {fileID: 0}
+  postProcessStack: {fileID: 0}
+  enablePostProcess: 0
+  postProcessRT: {fileID: 0}
+  pause: 0
+--- !u!114 &2120131164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a98bba995657c4fa78251ce6c8c28d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayTracing: {fileID: 2120131163}
 --- !u!1 &2141496947
 GameObject:
   m_ObjectHideFlags: 0

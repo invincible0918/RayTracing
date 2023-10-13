@@ -7,6 +7,9 @@ using UnityEngine;
 public class SaveTexture : MonoBehaviour
 {
     public RayTracing rayTracing;
+    public CameraMovement cameraMovement;
+    public bool autoSave = false;
+    public uint autoSaveSPP = 0;
 
     [ContextMenu("Save")]
     void Save()
@@ -36,6 +39,18 @@ public class SaveTexture : MonoBehaviour
         string path = $"{Application.dataPath}/Outputs/{textureName}.png";
         File.WriteAllBytes(path, bytes);
         Destroy(texture);
+    }
+
+    void Update()
+    {
+        if (!autoSave)
+            return;
+
+        if (rayTracing.samplePrePixel % autoSaveSPP == (autoSaveSPP - 1))
+        {
+            cameraMovement.PlayAtFrame();
+            StartCoroutine(SavePNG(rayTracing.convergedRT));
+        }
     }
 
     Color LinearToSRGB(Color col)

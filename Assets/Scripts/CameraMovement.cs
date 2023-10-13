@@ -4,6 +4,14 @@ using UnityEngine;
 
 public class CameraMovement : MonoBehaviour
 {
+    public enum MoveType
+    {
+        Rotate,
+        Track,
+    }
+    public MoveType moveType;
+
+    [Header("Rotate")]
     public Transform target;
     public Vector3 offset = new Vector3(0, 1, 0);
 
@@ -25,22 +33,41 @@ public class CameraMovement : MonoBehaviour
     float x = 0.0f;
     float y = 0.0f;
 
+    [Header("Track")]
+    public Animation animation;
+    public string animationName;
+    int frameIndex;
+    int frameCount;
+
     // Start is called before the first frame update
     void Start()
     {
-        distance = Vector3.Distance(target.position + offset, transform.position);
-        Vector3 angles = transform.eulerAngles;
-        x = angles.y;
-        y = angles.x;
+        switch (moveType)
+        {
+            case MoveType.Rotate:
+                distance = Vector3.Distance(target.position + offset, transform.position);
+                Vector3 angles = transform.eulerAngles;
+                x = angles.y;
+                y = angles.x;
+                break;
+            case MoveType.Track:
+                animation[animationName].speed = 0f;
+                frameCount = (int)(animation[animationName].length * 30f);
+                break;
+        }
     }
 
     // Update is called once per frame
     void LateUpdate()
     {
-        if (target == null)
-            return;
-
-        Rotate();
+        switch(moveType)
+        {
+            case MoveType.Rotate:
+                Rotate();
+                break;
+            case MoveType.Track:
+                break;
+        }
     }
 
     void Rotate()
@@ -72,5 +99,12 @@ public class CameraMovement : MonoBehaviour
         if (angle > 360F)
             angle -= 360F;
         return Mathf.Clamp(angle, min, max);
+    }
+
+    public void PlayAtFrame()
+    {
+        animation[animationName].time = (float)frameIndex / frameCount;
+        animation.Play(animationName);
+        frameIndex += 1;
     }
 }
