@@ -15,6 +15,14 @@ public class ColorGrading : PostProcessBase
         mat.SetTexture("_LutTex", lutTex);
     }
 
+    protected override void OnEnable()
+    {
+        base.OnEnable();
+
+        if (mat)
+            mat.SetTexture("_LutTex", lutTex);
+    }
+
     public override void RenderImage(RenderTexture source, RenderTexture destination)
     {
         Graphics.Blit(source, destination, mat);

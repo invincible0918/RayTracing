@@ -14,7 +14,10 @@ public class SaveTexture : MonoBehaviour
     [ContextMenu("Save")]
     void Save()
     {
-        StartCoroutine(SavePNG(rayTracing.convergedRT));
+        if (rayTracing.postProcessRT != null)
+            StartCoroutine(SavePNG(rayTracing.postProcessRT));
+        else
+            StartCoroutine(SavePNG(rayTracing.convergedRT));
     }
 
     IEnumerator SavePNG(RenderTexture rt)

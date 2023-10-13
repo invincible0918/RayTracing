@@ -20,6 +20,8 @@ public class PostProcessStack : MonoBehaviour
 
     public void Init(ComputeShader cs, int kernelHandle)
     {
+        Bind();
+
         if (inits != null)
             inits(cs, kernelHandle);
     }
@@ -38,7 +40,7 @@ public class PostProcessStack : MonoBehaviour
             updates();
     }
 
-    private void Start()
+    void Bind()
     {
         if (colorCorrection != null && colorCorrection.enabled)
         {

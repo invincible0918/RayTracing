@@ -2898,6 +2898,7 @@ GameObject:
   - component: {fileID: 2120131163}
   - component: {fileID: 2120131164}
   - component: {fileID: 2120131165}
+  - component: {fileID: 2120131166}
   m_Layer: 0
   m_Name: Camera
   m_TagString: MainCamera
@@ -2988,7 +2989,7 @@ MonoBehaviour:
   meshCollector: {fileID: 0}
   skyboxMat: {fileID: 2100000, guid: fe64dddea2b0e6b4e966a1a0ffcde6ca, type: 2}
   mainLight: {fileID: 784492501}
-  skyboxIntensityMulitiply: 6
+  skyboxIntensityMulitiply: 10
   shadowColor: {r: 0, g: 0.103773594, b: 0.20754719, a: 1}
   lightRadius: 0.2
   shadowIntensity: 1
@@ -3017,6 +3018,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb878f3ec08d0194381972040a56e9ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  moveType: 0
   target: {fileID: 1940835047}
   offset: {x: -1, y: 0.4, z: 0}
   xSpeed: 500
@@ -3028,6 +3030,8 @@ MonoBehaviour:
   distanceMax: 15
   rotationDamping: 0
   heightDamping: 0
+  animation: {fileID: 0}
+  animationName: 
 --- !u!114 &2120131165
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3044,6 +3048,22 @@ MonoBehaviour:
   colorGrading: {fileID: 0}
   bloom: {fileID: 0}
   dof: {fileID: 6391653191099142670}
+--- !u!114 &2120131166
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120131159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6a98bba995657c4fa78251ce6c8c28d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rayTracing: {fileID: 2120131163}
+  cameraMovement: {fileID: 0}
+  autoSave: 0
+  autoSaveSPP: 0
 --- !u!1 &2141496947
 GameObject:
   m_ObjectHideFlags: 0

@@ -12,6 +12,14 @@ public class PostProcessBase : MonoBehaviour
         Camera.main.allowHDR = true;
     }
 
+    protected virtual void OnEnable()
+    {
+    }
+
+    protected virtual void OnDisable()
+    {
+    }
+
     public virtual void Init(ComputeShader cs, int kernelHandle)
     {
         this.cs = cs;
