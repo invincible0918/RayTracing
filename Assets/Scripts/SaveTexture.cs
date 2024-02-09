@@ -12,11 +12,11 @@ public class SaveTexture : MonoBehaviour
     public uint autoSaveSPP = 0;
 
     [ContextMenu("Save")]
-    void Save()
+    public void Save()
     {
-        if (rayTracing.postProcessRT != null)
-            StartCoroutine(SavePNG(rayTracing.postProcessRT));
-        else
+        //if (rayTracing.postProcessRT != null)
+        //    StartCoroutine(SavePNG(rayTracing.postProcessRT));
+        //else
             StartCoroutine(SavePNG(rayTracing.convergedRT));
     }
 
@@ -38,8 +38,8 @@ public class SaveTexture : MonoBehaviour
         byte[] bytes = texture.EncodeToPNG();
 
         var dt = System.DateTime.Now;
-        string textureName = dt.ToString("yyyy_MM_dd_HH_mm_ss");
-        string path = $"{Application.dataPath}/Outputs/{textureName}.png";
+        string textureName = dt.ToString("yyyy_MM_dd_HH_mm_ss") + "_" + transform.parent.transform.eulerAngles.y;
+        string path = $"{Application.dataPath}/../Outputs/{textureName}.png";
         File.WriteAllBytes(path, bytes);
         Destroy(texture);
     }

@@ -64,6 +64,7 @@
     <Compile Include="Assets\Scripts\BVH\SceneDataTypes.cs" />
     <Compile Include="Assets\Scripts\PostProcess\ColorCorrection.cs" />
     <Compile Include="Assets\Scripts\SampleHemisphere.cs" />
+    <Compile Include="Assets\Scripts\ShowCamera.cs" />
     <Compile Include="Assets\Scripts\PostProcess\Bloom.cs" />
     <Compile Include="Assets\Scripts\BVH\ComputeBufferSorter.cs" />
     <Compile Include="Assets\Scripts\SaveTexture.cs" />

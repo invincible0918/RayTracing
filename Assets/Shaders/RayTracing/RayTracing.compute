@@ -58,11 +58,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     float2 uv = float2((id.xy + float2(Rand(), Rand()) - 0.5) / float2(width, height)) * 2 - 1;
 
     //////////////// chapter7_6 //////////////
-#ifdef DEPTH_OF_FIELD
-    Ray ray = CreateDoFCameraRay(uv);
-#else
+//#ifdef DEPTH_OF_FIELD
+//    Ray ray = CreateDoFCameraRay(uv);
+//#else
     Ray ray = CreateCameraRay(uv);
-#endif
+//#endif
 
     ////////////// chapter2_2 //////////////
     // 主要的光线追踪反弹循环
